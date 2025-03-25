@@ -1,7 +1,8 @@
 use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
+use crate::robot::Robot;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Cell {
     Empty,
     Obstacle,
@@ -9,6 +10,7 @@ pub enum Cell {
     Mineral,
     Science,
 }
+
 
 pub struct Map {
     pub width: usize,
@@ -72,4 +74,25 @@ impl Map {
             println!();
         }
     }
+
+pub fn display_with_robot(&self, robot: &Robot) {
+    for y in 0..self.height {
+        for x in 0..self.width {
+            if robot.x == x && robot.y == y {
+                print!(" 🤖 ");
+            } else {
+                let symbol = match self.grid[y][x] {
+                    Cell::Empty => " . ",
+                    Cell::Obstacle => "███",
+                    Cell::Energy => " ⚡ ",
+                    Cell::Mineral => " ⛏️ ",
+                    Cell::Science => " 🔬",
+                };
+                print!("{}", symbol);
+            }
+        }
+        println!();
+    }
+}
+
 }
