@@ -24,7 +24,9 @@ pub struct Robot {
     pub direction: Direction,
     pub role: RobotRole,
     pub discovered: Vec<((usize, usize), Cell)>,
-    pub collected_energy: u32,
+    pub collected: Vec<Cell>, 
+    pub returning_to_station: bool, 
+
 }
 
 
@@ -37,7 +39,8 @@ impl Robot {
             direction,
             role,
             discovered: Vec::new(),
-            collected_energy: 0,
+            collected: Vec::new(), 
+            returning_to_station: false,
         }        
     }
 
@@ -93,7 +96,7 @@ impl Robot {
 
 
     /////////////////////
-    pub fn act(&mut self, map: &mut Map) {
+    pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize) { 
         match self.role {
             RobotRole::Explorer => {
                 self.move_random(map);
@@ -102,7 +105,12 @@ impl Robot {
                 self.collect_resource(map);
             }
             RobotRole::Scientist => {
-                self.scan(map);
+                if self.returning_to_station {
+                    self.move_towards(station_x, station_y, map);
+                } else {
+                    self.scan(map);
+                    self.move_random(map);
+                }
             }
         }
     }
@@ -122,22 +130,44 @@ impl Robot {
     fn collect_resource(&mut self, map: &mut Map) {
         let cell = &mut map.grid[self.y][self.x];
         if *cell == Cell::Energy || *cell == Cell::Mineral {
-            println!("🧺 Robot collecte à ({}, {}) : {:?}", self.x, self.y, cell);
+            let collected = *cell; 
+            println!("🧺 Robot collecte à ({}, {}) : {:?}", self.x, self.y, collected);
             *cell = Cell::Empty;
-            self.collected_energy += 1;
-        }
-         else {
+            self.collected.push(collected);
+        } else {
             self.move_random(map);
         }
     }
+    
 
     fn scan(&mut self, map: &Map) {
         self.vision(map, 1);
+        let mut new_discoveries = 0;
+    
         for ((x, y), cell) in &self.discovered {
             if *cell == Cell::Science {
                 println!("🔬 Découverte scientifique détectée à ({}, {}) !", x, y);
+                new_discoveries += 1;
             }
         }
+    
+        if new_discoveries > 0 {
+            println!("🧠 Robot Scientist a détecté {} science(s) et retourne à la station", new_discoveries);
+            self.returning_to_station = true;
+        }
     }
+    
+    fn move_towards(&mut self, target_x: usize, target_y: usize, map: &Map) {
+        if self.x < target_x && map.grid[self.y][self.x + 1] != Cell::Obstacle {
+            self.x += 1;
+        } else if self.x > target_x && map.grid[self.y][self.x - 1] != Cell::Obstacle {
+            self.x -= 1;
+        } else if self.y < target_y && map.grid[self.y + 1][self.x] != Cell::Obstacle {
+            self.y += 1;
+        } else if self.y > target_y && map.grid[self.y - 1][self.x] != Cell::Obstacle {
+            self.y -= 1;
+        }
+    }
+    
     
 }

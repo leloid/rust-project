@@ -1,15 +1,15 @@
 use crate::map::{Cell, Map};
-use crate::robot::{Robot, RobotRole};
+use crate::robot::{Robot, RobotRole, Direction};
 use std::collections::HashMap;
-use crate::robot::Direction;
 
 #[derive(Debug)]
 pub struct Station {
     pub x: usize,
     pub y: usize,
     pub discovered: HashMap<(usize, usize), Cell>, // fusion des cartes
-    pub resources_collected: u32,
+    pub resources_collected: HashMap<Cell, u32>, 
     pub robots_created: u32,
+    pub scientific_discoveries: u32, 
 }
 
 impl Station {
@@ -18,24 +18,32 @@ impl Station {
             x,
             y,
             discovered: HashMap::new(),
-            resources_collected: 0,
-            robots_created: 3, // les 3 de départ
+            resources_collected: HashMap::new(),
+            robots_created: 3, 
+            scientific_discoveries: 0, 
         }
     }
 
     pub fn receive_data(&mut self, data: Vec<((usize, usize), Cell)>) {
         for (pos, cell) in data {
+            if cell == Cell::Science && !self.discovered.contains_key(&pos) {
+                self.scientific_discoveries += 1;
+            }
             self.discovered.insert(pos, cell);
         }
     }
+    
 
-    pub fn receive_resources(&mut self, amount: u32) {
-        self.resources_collected += amount;
+    pub fn receive_resources(&mut self, collected_cells: Vec<Cell>) {
+        for cell in collected_cells {
+            *self.resources_collected.entry(cell).or_insert(0) += 1;
+        }
     }
 
     pub fn maybe_create_robot(&mut self) -> Option<Robot> {
-        if self.resources_collected >= 5 {
-            self.resources_collected -= 5;
+        let energy = self.resources_collected.get(&Cell::Energy).copied().unwrap_or(0);
+        if energy >= 5 {
+            *self.resources_collected.entry(Cell::Energy).or_insert(0) -= 5;
             self.robots_created += 1;
             println!("🚀 Station a créé un nouveau robot !");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Explorer))

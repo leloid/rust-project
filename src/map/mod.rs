@@ -2,7 +2,7 @@ use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Cell {
     Empty,
     Obstacle,
@@ -63,11 +63,11 @@ impl Map {
         for row in &self.grid {
             for cell in row {
                 let symbol = match cell {
-                    Cell::Empty => " . ",
-                    Cell::Obstacle => "███",
-                    Cell::Energy => " ⚡ ",
-                    Cell::Mineral => " ⛏️ ",
-                    Cell::Science => " 🔬",
+                    Cell::Empty => " E ",
+                    Cell::Obstacle => " O ",
+                    Cell::Energy => " P ",
+                    Cell::Mineral => " M ",
+                    Cell::Science => " S ",
                 };
                 print!("{}", symbol);
             }
@@ -75,24 +75,49 @@ impl Map {
         }
     }
 
-pub fn display_with_robot(&self, robot: &Robot) {
-    for y in 0..self.height {
-        for x in 0..self.width {
-            if robot.x == x && robot.y == y {
-                print!(" 🤖 ");
-            } else {
-                let symbol = match self.grid[y][x] {
-                    Cell::Empty => " . ",
-                    Cell::Obstacle => "███",
-                    Cell::Energy => " ⚡ ",
-                    Cell::Mineral => " ⛏️ ",
-                    Cell::Science => " 🔬",
-                };
-                print!("{}", symbol);
+    pub fn display_with_robot(&self, robot: &Robot) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if robot.x == x && robot.y == y {
+                    print!(" R ");
+                } else {
+                    let symbol = match self.grid[y][x] {
+                        Cell::Empty => " E ",
+                        Cell::Obstacle => " O ",
+                        Cell::Energy => " P ",
+                        Cell::Mineral => " M ",
+                        Cell::Science => " S ",
+                    };
+                    print!("{}", symbol);
+                }
             }
+            println!();
         }
-        println!();
     }
-}
 
+    pub fn display_with_entities(&self, robots: &[Robot], station_x: usize, station_y: usize) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                // Détermine le symbole à afficher selon priorité
+                let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
+                    " R "
+                } else if x == station_x && y == station_y {
+                    " H "
+                } else {
+                    match self.grid[y][x] {
+                        Cell::Empty => " E ",
+                        Cell::Obstacle => " O ",
+                        Cell::Energy => " P ",
+                        Cell::Mineral => " M ",
+                        Cell::Science => " S ",
+                    }
+                };
+    
+                // Affiche le symbole en largeur fixe (4 espaces pour l’alignement parfait)
+                print!("{:<4}", symbol);
+            }
+            println!();
+        }
+    }
+    
 }
