@@ -3,76 +3,97 @@ mod resources;
 mod config;
 mod map;
 use map::Map;
+use map::Cell;
 
 mod robot;
 use robot::{Robot, Direction, RobotRole};
+use std::collections::HashSet;
 
 use station::Station;
 
 fn main() {
     let seed = 42;
-    let mut map = Map::new(30, 10, seed);
+    let mut map = Map::new(30, 15, seed);
 
-    // Création de la station à une position fixe (par exemple au centre)
-    let mut station = Station::new(5, 3);
+    // Création de la station
+    let station_x = 5;
+    let station_y = 3;
+    let mut station = Station::new(station_x, station_y);
 
-    // Création des robots initiaux
+    // Création des robots
     let mut robots = vec![
         Robot::new(5, 3, Direction::East, RobotRole::Explorer),
-        Robot::new(5, 3, Direction::South, RobotRole::Collector),
-        // Robot::new(5, 3, Direction::North, RobotRole::Scientist),
-        // Robot::new(8, 3, Direction::North, RobotRole::Scientist),
-        Robot::new(6, 2, Direction::East, RobotRole::Scientist),
-
+        Robot::new(5, 1, Direction::North, RobotRole::Explorer),
+        Robot::new(7, 2, Direction::North, RobotRole::Scientist),
+        Robot::new(1, 3, Direction::East, RobotRole::Collector),
     ];
 
-    println!("🎮 Carte initiale avec robots");
-    // for robot in &robots {
-    //     map.display_with_robot(robot);
-    // }
-    map.display_with_entities(&robots, station.x, station.y);
-
+    println!("🎮 Carte initiale avec brouillard de guerre");
+    map.display_with_fog(&robots, station_x, station_y);
 
     // Simulation de plusieurs ticks
-    for tick in 1..=10 {
+    for tick in 1..=1000 {
         println!("=====================");
-        println!("\n🚀 Tick {} : chaque robot agit !", tick);
-        println!("📦 Ressources collectées jusqu'ici :");
-        for (cell, count) in &station.resources_collected {
-            println!("   - {:?} : {}", cell, count);
-        }
-        
-        for robot in &mut robots {
-            robot.act(&mut map, station.x, station.y);
+        println!("\n🚀 Tick {} : exploration en cours !", tick);
 
-            // Le robot revient à la station pour synchroniser ses données
-            if robot.x == station.x && robot.y == station.y {
-                println!("🔁 Robot est de retour à la station !");
-                robot.returning_to_station = false;
+        for (i, robot) in robots.iter_mut().enumerate() {
+            println!("🤖 Robot #{} ({:?}) en position ({}, {})", i, robot.role, robot.x, robot.y);
+            robot.act(&mut map, station_x, station_y);
+
+            // S'il revient à la station
+            if robot.x == station_x && robot.y == station_y {
+                // Vérifie s'il a découvert de la science non encore validée
+                let new_sciences: Vec<_> = robot
+                    .discovered
+                    .iter()
+                    .filter(|(_, cell)| *cell == Cell::Science)
+                    .cloned()
+                    .collect();
+            
+                if !new_sciences.is_empty() {
+                    println!("✅ Validation scientifique reçue à la station ! 🔬✨");
+                }
+            
+                // Transfert des données à la station
                 station.receive_data(robot.discovered.drain(..).collect());
                 station.receive_resources(robot.collected.drain(..).collect());
             }
             
-        }
-
-        // La station peut créer un nouveau robot si elle a assez de ressources
-        if let Some(new_robot) = station.maybe_create_robot() {
-            robots.push(new_robot);
+            if !robot.collected.is_empty() {
+                println!("📦 Robot #{} a collecté :", i);
+                for cell in &robot.collected {
+                    println!("   - {:?}", cell);
+                }
+            }
+            
         }
 
         // Affichage de la carte après chaque tick
         println!("\n🗺️ Carte après Tick {} :", tick);
-        map.display_with_entities(&robots, station.x, station.y);
-
+        map.display_with_fog(&robots, station_x, station_y);
     }
 
-    // Affichage des infos finales
-    println!("\n📡 Mission terminée !");
-    println!("📚 Zones découvertes par la station : {}", station.discovered.len());
-    println!("🔬 Découvertes scientifiques : {}", station.scientific_discoveries); // <- AJOUTÉ
-    println!("⚡ Ressources collectées :");
+    // ⚡ Synchronisation finale avec la station
+    for robot in &mut robots {
+        station.receive_data(robot.discovered.drain(..).collect());
+        station.receive_resources(robot.collected.drain(..).collect());
+    }
+
+    // ✅ Affichage des infos finales station + robots
+    println!("\n📡 Exploration terminée !");
+    for (i, robot) in robots.iter().enumerate() {
+        println!("📊 Robot #{} ({:?})", i, robot.role);
+        println!("   📍 Position finale : ({}, {})", robot.x, robot.y);
+    }
+
+    // 📦 Infos fusionnées à la station
+    println!("\n🏠 Station - Données fusionnées :");
+    println!("   🧠 Découvertes scientifiques : {}", station.scientific_discoveries);
+    println!("   🔍 Zones explorées (total unique) : {}", station.discovered.len());
+    println!("   🔧 Ressources collectées :");
     for (cell, count) in &station.resources_collected {
-        println!("   - {:?} : {}", cell, count);
+        println!("      - {:?} : {}", cell, count);
     }
-        println!("🤖 Robots créés : {}", station.robots_created);
+    println!("   🤖 Robots créés au total : {}", station.robots_created);
+
 }

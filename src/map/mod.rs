@@ -1,6 +1,7 @@
 use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
+use crate::robot::RobotRole;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Cell {
@@ -100,20 +101,56 @@ impl Map {
             for x in 0..self.width {
                 // Détermine le symbole à afficher selon priorité
                 let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
-                    " R "
+                    "\x1b[31m R \x1b[0m " 
                 } else if x == station_x && y == station_y {
-                    " H "
+                    "\x1b[34m H \x1b[0m " 
                 } else {
                     match self.grid[y][x] {
                         Cell::Empty => " E ",
-                        Cell::Obstacle => " O ",
-                        Cell::Energy => " P ",
-                        Cell::Mineral => " M ",
-                        Cell::Science => " S ",
+                        Cell::Obstacle => "\x1b[90m O \x1b[0m ",
+                        Cell::Energy => "\x1b[33m P \x1b[0m ",    
+                        Cell::Mineral => "\x1b[35m M \x1b[0m ",   
+                        Cell::Science => "\x1b[36m S \x1b[0m ",   
                     }
                 };
     
                 // Affiche le symbole en largeur fixe (4 espaces pour l’alignement parfait)
+                print!("{:<4}", symbol);
+            }
+            println!();
+        }
+    }
+
+    pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize) {
+        let mut discovered = std::collections::HashSet::new();
+        
+        // Collecte les cases découvertes par les Explorers
+        for robot in robots {
+            if let RobotRole::Explorer = robot.role {
+                for &((x, y), _) in &robot.discovered {
+                    discovered.insert((x, y));
+                }
+            }
+        }
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
+                    "\x1b[31m R \x1b[0m " // Robot
+                } else if x == station_x && y == station_y {
+                    "\x1b[34m H \x1b[0m " // Station
+                } else if discovered.contains(&(x, y)) {
+                    match self.grid[y][x] {
+                        Cell::Empty => " E ",
+                        Cell::Obstacle => "\x1b[90m O \x1b[0m ",
+                        Cell::Energy => "\x1b[33m P \x1b[0m ",
+                        Cell::Mineral => "\x1b[35m M \x1b[0m ",
+                        Cell::Science => "\x1b[36m S \x1b[0m ",
+                    }
+                } else {
+                    " ? " // Zone non explorée
+                };
+                
                 print!("{:<4}", symbol);
             }
             println!();

@@ -19,7 +19,7 @@ impl Station {
             y,
             discovered: HashMap::new(),
             resources_collected: HashMap::new(),
-            robots_created: 3, 
+            robots_created: 0, 
             scientific_discoveries: 0, 
         }
     }
