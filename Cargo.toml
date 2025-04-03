@@ -1,5 +1,5 @@
 [package]
-name = "ProjetEssaim"
+name = "projet_essaim"   
 version = "0.1.0"
 edition = "2024"
 
@@ -8,3 +8,11 @@ rand = "0.8"
 noise = "0.8"
 bevy = "0.15"
 bevy_pancam = "0.17"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
+name = "gui"
+path = "src/bin/main_bevy.rs"

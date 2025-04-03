@@ -120,8 +120,8 @@ pub fn setup_simulation(
                 sprite: Sprite {
                     color: match robot.role {
                         RobotRole::Explorer => Color::srgb(0.0, 1.0, 0.0), // GREEN
-                        RobotRole::Collector => Color::srgb(1.0, 0.55, 0.0), // ORANGE approximatif
-                        RobotRole::Scientist => Color::srgb(0.5, 0.0, 0.5), // PURPLE approximatif
+                        RobotRole::Collector => Color::srgb(1.0, 0.55, 0.0), // ORANGE 
+                        RobotRole::Scientist => Color::srgb(0.5, 0.0, 0.5), // PURPLE 
                     },
                     custom_size: Some(Vec2::splat(TILE_SIZE * 0.75)),
                     ..default()
