@@ -3,16 +3,19 @@ mod robot;
 mod station;
 mod resources;
 mod config;
+use resources::gui::{setup_simulation, tick_simulation, camera_zoom_system, SimulationData};
+use resources::gui::camera_pan_system;
+
 use bevy::prelude::*;
 use bevy::window::{Window, WindowPlugin, WindowPosition, MonitorSelection};
+use config::{MAP_WIDTH, MAP_HEIGHT, SEED};
 
-use resources::gui::{setup_simulation, SimulationData};
 use map::Map;
 use robot::{Robot, RobotRole, Direction};
 
 fn main() {
     let seed = 42;
-    let map = Map::new(1200, 15, seed);
+    let map = Map::new(MAP_WIDTH, MAP_HEIGHT, SEED);
 
     let robots = vec![
         Robot::new(5, 3, Direction::East, RobotRole::Explorer),
@@ -42,5 +45,8 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, setup_simulation)
+        .add_systems(Update, tick_simulation)
+        .add_systems(Update, camera_zoom_system) 
+        .add_systems(Update, camera_pan_system)
         .run();
 }
