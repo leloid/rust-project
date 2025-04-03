@@ -8,12 +8,13 @@ use map::Cell;
 mod robot;
 use robot::{Robot, Direction, RobotRole};
 use std::collections::HashSet;
+use config::{MAP_WIDTH, MAP_HEIGHT, SEED};
 
 use station::Station;
 
 fn main() {
     let seed = 42;
-    let mut map = Map::new(3000, 1500, seed);
+    let mut map = Map::new(MAP_WIDTH, MAP_HEIGHT, SEED);
 
     // Création de la station
     let station_x = 5;
@@ -24,15 +25,15 @@ fn main() {
     let mut robots = vec![
         Robot::new(5, 3, Direction::East, RobotRole::Explorer),
         Robot::new(5, 1, Direction::North, RobotRole::Explorer),
-        Robot::new(7, 2, Direction::North, RobotRole::Scientist),
-        Robot::new(1, 3, Direction::East, RobotRole::Collector),
+        Robot::new(7, 2, Direction::North, RobotRole::Explorer),
+        Robot::new(1, 3, Direction::East, RobotRole::Explorer),
     ];
 
     println!("🎮 Carte initiale avec brouillard de guerre");
     map.display_with_fog(&robots, station_x, station_y);
 
     // Simulation de plusieurs ticks
-    for tick in 1..=1000 {
+    for tick in 1..=450 {
         println!("=====================");
         println!("\n🚀 Tick {} : exploration en cours !", tick);
 
