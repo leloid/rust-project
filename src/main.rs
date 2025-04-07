@@ -38,7 +38,7 @@ fn main() {
 
         for (i, robot) in robots.iter_mut().enumerate() {
             println!("🤖 Robot #{} ({:?}) en position ({}, {})", i, robot.role, robot.x, robot.y);
-            robot.act(&mut map, station_x, station_y);
+            robot.act(&mut map, station_x, station_y, &station);
 
             // S'il revient à la station
             if robot.x == station_x && robot.y == station_y {

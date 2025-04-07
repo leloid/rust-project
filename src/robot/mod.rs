@@ -95,7 +95,8 @@ impl Robot {
             .min_by_key(|(x, y)| self.x.abs_diff(*x) + self.y.abs_diff(*y))
     }
     
-    pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize) { 
+    pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize, station: &crate::station::Station)
+ { 
         match self.role {
             RobotRole::Explorer => {
                 self.vision(map, 2); 
@@ -130,14 +131,33 @@ impl Robot {
             RobotRole::Scientist => {
                 if self.returning_to_station {
                     self.move_dijkstra_to(station_x, station_y, map);
+                    return;
+                }
+    
+                if let Some((sx, sy)) = self.find_science_target(station, map) {
+                    if (self.x, self.y) == (sx, sy) {
+                        self.scan(map); // 🔍 Valide sur place
+                        self.returning_to_station = true;
+                    } else {
+                        self.move_dijkstra_to(sx, sy, map);
+                    }
                 } else {
-                    self.scan(map);
+                    self.scan(map); // rien trouvé → scanne autour
                     self.move_random(map);
                 }
             }
         }
     }
-
+    fn find_science_target(&self, station: &crate::station::Station, map: &Map) -> Option<(usize, usize)> {
+        station
+            .discovered
+            .iter()
+            .filter(|(_, cell)| **cell == Cell::Science)
+            .map(|(pos, _)| *pos)
+            .filter(|(x, y)| map.grid[*y][*x] != Cell::Obstacle)
+            .min_by_key(|(x, y)| self.x.abs_diff(*x) + self.y.abs_diff(*y))
+    }
+    
     fn move_random(&mut self, map: &Map) {
         let mut rng = rand::thread_rng();
         let dir = rng.gen_range(0..4);
