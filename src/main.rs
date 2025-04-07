@@ -24,16 +24,15 @@ fn main() {
     // Création des robots
     let mut robots = vec![
         Robot::new(5, 3, Direction::East, RobotRole::Explorer),
-        Robot::new(5, 1, Direction::North, RobotRole::Explorer),
-        Robot::new(7, 2, Direction::North, RobotRole::Explorer),
-        Robot::new(1, 3, Direction::East, RobotRole::Explorer),
+        Robot::new(7, 2, Direction::North, RobotRole::Scientist),
+        // Robot::new(1, 3, Direction::East, RobotRole::Explorer),
     ];
 
     println!("🎮 Carte initiale avec brouillard de guerre");
-    map.display_with_fog(&robots, station_x, station_y);
+    map.display_with_fog(&robots, station_x, station_y, &station);
 
     // Simulation de plusieurs ticks
-    for tick in 1..=450 {
+    for tick in 1..=33 {
         println!("=====================");
         println!("\n🚀 Tick {} : exploration en cours !", tick);
 
@@ -71,7 +70,7 @@ fn main() {
 
         // Affichage de la carte après chaque tick
         println!("\n🗺️ Carte après Tick {} :", tick);
-        map.display_with_fog(&robots, station_x, station_y);
+        map.display_with_fog(&robots, station_x, station_y, &station);
     }
 
     // ⚡ Synchronisation finale avec la station

@@ -2,6 +2,7 @@ use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
 use crate::robot::RobotRole;
+use crate::station::Station;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Cell {
@@ -121,10 +122,15 @@ impl Map {
         }
     }
 
-    pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize) {
+    pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize, station: &Station) {
         let mut discovered = std::collections::HashSet::new();
-        
-        // Collecte les cases découvertes par les Explorers
+    
+        // Ajoute les cases découvertes par la station
+        for &(x, y) in station.discovered.keys() {
+            discovered.insert((x, y));
+        }
+    
+        // Ajoute aussi celles des Explorers actifs
         for robot in robots {
             if let RobotRole::Explorer = robot.role {
                 for &((x, y), _) in &robot.discovered {
@@ -132,7 +138,7 @@ impl Map {
                 }
             }
         }
-
+    
         for y in 0..self.height {
             for x in 0..self.width {
                 let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
