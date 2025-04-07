@@ -1,4 +1,4 @@
-use crate::map::{Cell, Map};
+use crate::map::Cell;
 use crate::robot::{Robot, RobotRole, Direction};
 use std::collections::HashMap;
 
