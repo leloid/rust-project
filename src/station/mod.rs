@@ -7,9 +7,9 @@ pub struct Station {
     pub x: usize,
     pub y: usize,
     pub discovered: HashMap<(usize, usize), Cell>, // fusion des cartes
-    pub resources_collected: HashMap<Cell, u32>, 
+    pub resources_collected: HashMap<Cell, u32>,   // resources collected by collectors
     pub robots_created: u32,
-    pub scientific_discoveries: u32, 
+    pub scientific_discoveries: u32,
 }
 
 impl Station {
@@ -19,8 +19,8 @@ impl Station {
             y,
             discovered: HashMap::new(),
             resources_collected: HashMap::new(),
-            robots_created: 0, 
-            scientific_discoveries: 0, 
+            robots_created: 0,
+            scientific_discoveries: 0,
         }
     }
 
@@ -32,7 +32,6 @@ impl Station {
             self.discovered.insert(pos, cell);
         }
     }
-    
 
     pub fn receive_resources(&mut self, collected_cells: Vec<Cell>) {
         for cell in collected_cells {

@@ -3,6 +3,7 @@ use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
 use crate::robot::RobotRole;
 use crate::station::Station;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Cell {
@@ -131,18 +132,23 @@ impl Map {
     }
 
     pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize, station: &Station) {
-        let mut discovered = std::collections::HashSet::new();
-    
-        // Ajoute les cases découvertes par la station
-        for &(x, y) in station.discovered.keys() {
-            discovered.insert((x, y));
+        let mut visible_cells = HashSet::new();
+        
+        // Add station's vision
+        for y in station_y.saturating_sub(2)..=usize::min(station_y + 2, self.height - 1) {
+            for x in station_x.saturating_sub(2)..=usize::min(station_x + 2, self.width - 1) {
+                visible_cells.insert((x, y));
+            }
         }
-    
-        // Ajoute aussi celles des Explorers actifs
+
+        // Add robots' vision
         for robot in robots {
-            let RobotRole::Explorer = robot.role;
-            for &((x, y), _) in &robot.discovered {
-                discovered.insert((x, y));
+            if let RobotRole::Explorer = robot.role {
+                for y in robot.y.saturating_sub(2)..=usize::min(robot.y + 2, self.height - 1) {
+                    for x in robot.x.saturating_sub(2)..=usize::min(robot.x + 2, self.width - 1) {
+                        visible_cells.insert((x, y));
+                    }
+                }
             }
         }
     
@@ -152,7 +158,7 @@ impl Map {
                     "\x1b[31m R \x1b[0m " // Robot
                 } else if x == station_x && y == station_y {
                     "\x1b[34m H \x1b[0m " // Station
-                } else if discovered.contains(&(x, y)) {
+                } else if visible_cells.contains(&(x, y)) {
                     match self.grid[y][x] {
                         Cell::Empty => " E ",
                         Cell::Obstacle => "\x1b[90m O \x1b[0m ",
