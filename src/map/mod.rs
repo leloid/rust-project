@@ -45,6 +45,14 @@ impl Map {
         Self { width, height, grid }
     }
 
+    pub fn place_station(&mut self, x: usize, y: usize) {
+        // Ensure the position is within bounds
+        if x < self.width && y < self.height {
+            // Clear the station's position
+            self.grid[y][x] = Cell::Empty;
+        }
+    }
+
     fn place_random(grid: &mut Vec<Vec<Cell>>, kind: Cell, count: usize, rng: &mut StdRng) {
         let height = grid.len();
         let width = grid[0].len();
@@ -115,7 +123,7 @@ impl Map {
                     }
                 };
     
-                // Affiche le symbole en largeur fixe (4 espaces pour l’alignement parfait)
+                // Affiche le symbole en largeur fixe (4 espaces pour l'alignement parfait)
                 print!("{:<4}", symbol);
             }
             println!();
@@ -132,10 +140,9 @@ impl Map {
     
         // Ajoute aussi celles des Explorers actifs
         for robot in robots {
-            if let RobotRole::Explorer = robot.role {
-                for &((x, y), _) in &robot.discovered {
-                    discovered.insert((x, y));
-                }
+            let RobotRole::Explorer = robot.role;
+            for &((x, y), _) in &robot.discovered {
+                discovered.insert((x, y));
             }
         }
     

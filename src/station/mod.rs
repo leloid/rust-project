@@ -2,7 +2,7 @@ use crate::map::Cell;
 use crate::robot::{Robot, RobotRole, Direction};
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Station {
     pub x: usize,
     pub y: usize,
