@@ -24,14 +24,7 @@ impl Station {
         }
     }
 
-    pub fn receive_data(&mut self, data: Vec<((usize, usize), Cell)>) {
-        for (pos, cell) in data {
-            if cell == Cell::Science && !self.discovered.contains_key(&pos) {
-                self.scientific_discoveries += 1;
-            }
-            self.discovered.insert(pos, cell);
-        }
-    }
+
 
     pub fn receive_resources(&mut self, collected_cells: Vec<Cell>) {
         for cell in collected_cells {

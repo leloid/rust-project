@@ -25,6 +25,7 @@ pub struct Robot {
     pub discovered: Vec<((usize, usize), Cell)>,
     pub collected: Vec<Cell>,  // Resources collected by the collector
     pub target_resource: Option<Cell>,  // Current target resource type
+    pub current_path: Vec<(usize, usize)>,  // Current path to follow
 }
 
 impl Robot {
@@ -37,6 +38,7 @@ impl Robot {
             discovered: Vec::new(),
             collected: Vec::new(),
             target_resource: None,
+            current_path: Vec::new(),
         }
     }
 
@@ -96,56 +98,61 @@ impl Robot {
                 self.move_smart_towards_unknown(map);
             }
             RobotRole::Collector => {
-                // If we have any resources, return to station
-                if !self.collected.is_empty() {
-                    // If we're at the station, deposit resources
+                // Check if we're on a resource and collect it
+                let current_cell = map.grid[self.y][self.x];
+                if (current_cell == Cell::Mineral || current_cell == Cell::Energy) && self.collected.len() < 2 {
+                    self.collected.push(current_cell);
+                    map.grid[self.y][self.x] = Cell::Empty;
+                    println!("🤖 Collector collected a resource! Total collected: {}", self.collected.len());
+                }
+
+                // If we have 2 resources, return to station
+                if self.collected.len() >= 2 {
                     if self.x == station_x && self.y == station_y {
+                        println!("🤖 Collector depositing {} resources at station", self.collected.len());
                         station.receive_resources(self.collected.drain(..).collect());
                     } else {
-                        // Move towards the station
                         self.move_dijkstra_to(map, station_x, station_y);
                     }
                 } else {
-                    // Find and collect resources
-                    self.find_and_collect_resources(map, station);
+                    // Look for nearest resource
+                    if let Some((target_x, target_y)) = self.find_nearest_resource_position(map) {
+                        self.move_dijkstra_to(map, target_x, target_y);
+                    } else {
+                        // If no resources found, explore
+                        self.move_smart_towards_unknown(map);
+                    }
                 }
             }
         }
     }
 
-    fn find_and_collect_resources(&mut self, map: &mut Map, station: &mut crate::station::Station) {
-        // First check if we're standing on a resource
-        let current_cell = map.grid[self.y][self.x];
-        if (current_cell == Cell::Mineral || current_cell == Cell::Energy) && self.target_resource.is_none() {
-            self.collected.push(current_cell);
-            map.grid[self.y][self.x] = Cell::Empty;
-            // Don't return, let act() handle the movement
-        }
+    fn find_nearest_resource_position(&self, map: &Map) -> Option<(usize, usize)> {
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        queue.push_back((self.x, self.y));
+        visited.insert((self.x, self.y));
 
-        // If we don't have a target resource, find one
-        if self.target_resource.is_none() {
-            self.target_resource = self.find_nearest_resource(map, station);
-        }
-
-        if let Some(target_type) = self.target_resource {
-            // Move towards the target resource
-            if let Some((target_x, target_y)) = self.find_resource_position(map, target_type) {
-                self.move_dijkstra_to(map, target_x, target_y);
-                
-                // If we reached the resource, collect it
-                if self.x == target_x && self.y == target_y {
-                    self.collected.push(target_type);
-                    map.grid[self.y][self.x] = Cell::Empty;  // Remove resource from map
-                    self.target_resource = None;  // Reset target
-                }
-            } else {
-                // If we can't find the target resource, reset target
-                self.target_resource = None;
+        while let Some((x, y)) = queue.pop_front() {
+            let cell = map.grid[y][x];
+            if cell == Cell::Mineral || cell == Cell::Energy {
+                return Some((x, y));
             }
-        } else {
-            // If no resources found, explore
-            self.move_smart_towards_unknown(map);
+
+            // Add neighbors to queue
+            for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
+                let nx = x as isize + dx;
+                let ny = y as isize + dy;
+                if nx >= 0 && ny >= 0 && nx < map.width as isize && ny < map.height as isize {
+                    let pos = (nx as usize, ny as usize);
+                    if !visited.contains(&pos) && map.grid[pos.1][pos.0] != Cell::Obstacle {
+                        queue.push_back(pos);
+                        visited.insert(pos);
+                    }
+                }
+            }
         }
+        None
     }
 
     fn find_nearest_resource(&self, map: &Map, station: &mut crate::station::Station) -> Option<Cell> {
@@ -158,14 +165,7 @@ impl Robot {
             let cell = map.grid[y][x];
             if cell == Cell::Mineral || cell == Cell::Energy {
                 // Check if this resource is already being targeted by another collector
-                let mut is_targeted = false;
-                for (pos, _) in &station.discovered {
-                    if *pos == (x, y) {
-                        is_targeted = true;
-                        break;
-                    }
-                }
-                if !is_targeted {
+                if !station.discovered.contains_key(&(x, y)) {
                     // Mark this resource as targeted
                     station.discovered.insert((x, y), cell);
                     return Some(cell);
@@ -280,8 +280,28 @@ impl Robot {
     }
 
     fn move_dijkstra_to(&mut self, map: &mut Map, target_x: usize, target_y: usize) {
-        println!("Moving from ({}, {}) to ({}, {})", self.x, self.y, target_x, target_y);
         
+        // If we already have a path, follow it
+        if !self.current_path.is_empty() {
+            if let Some(&(nx, ny)) = self.current_path.first() {
+                if nx > self.x {
+                    self.direction = Direction::East;
+                } else if nx < self.x {
+                    self.direction = Direction::West;
+                } else if ny > self.y {
+                    self.direction = Direction::South;
+                } else if ny < self.y {
+                    self.direction = Direction::North;
+                }
+                self.move_forward(map);
+                if self.x == nx && self.y == ny {
+                    self.current_path.remove(0);
+                }
+                return;
+            }
+        }
+
+        // Calculate new path
         let mut queue = VecDeque::new();
         let mut visited = HashSet::new();
         let mut came_from = vec![vec![None; map.width]; map.height];
@@ -300,22 +320,12 @@ impl Robot {
                 }
 
                 path.reverse();
-
-                // Find the first step in the path that's not our current position
-                if let Some(&(nx, ny)) = path.iter().find(|&&(x, y)| (x, y) != (self.x, self.y)) {
-                    println!("Next step: ({}, {})", nx, ny);
-                    if nx > self.x {
-                        self.direction = Direction::East;
-                    } else if nx < self.x {
-                        self.direction = Direction::West;
-                    } else if ny > self.y {
-                        self.direction = Direction::South;
-                    } else if ny < self.y {
-                        self.direction = Direction::North;
-                    }
-                    self.move_forward(map);
-                    return;
+                // Remove our current position from the path
+                if !path.is_empty() && path[0] == (self.x, self.y) {
+                    path.remove(0);
                 }
+                self.current_path = path;
+                break;
             }
 
             for (dx, dy) in [(0, 1), (1, 0), (0, -1), (-1, 0)] {
@@ -336,16 +346,18 @@ impl Robot {
         }
         
         // If we can't find a path, try to move in the general direction
-        println!("No path found, moving towards target");
-        if target_x > self.x {
-            self.direction = Direction::East;
-        } else if target_x < self.x {
-            self.direction = Direction::West;
-        } else if target_y > self.y {
-            self.direction = Direction::South;
-        } else if target_y < self.y {
-            self.direction = Direction::North;
+        if self.current_path.is_empty() {
+            println!("No path found, moving towards target");
+            if target_x > self.x {
+                self.direction = Direction::East;
+            } else if target_x < self.x {
+                self.direction = Direction::West;
+            } else if target_y > self.y {
+                self.direction = Direction::South;
+            } else if target_y < self.y {
+                self.direction = Direction::North;
+            }
+            self.move_forward(map);
         }
-        self.move_forward(map);
     }
 }
