@@ -14,6 +14,7 @@ pub enum Direction {
 pub enum RobotRole {
     Explorer,
     Collector,
+    Scientist,  // New role for Scientist robot
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +101,7 @@ impl Robot {
         match self.role {
             RobotRole::Explorer => {
                 self.vision(map, 1, station);
+
                 // Explorer moves towards unknown areas
                 self.move_smart_towards_unknown(map);
             }
@@ -127,6 +129,33 @@ impl Robot {
                     } else {
                         // If no resources found, explore
                         self.move_smart_towards_unknown(map);
+                    }
+                }
+            }
+            RobotRole::Scientist => {
+                // Check if we're on a Scientist and collect it
+                let current_cell = map.grid[self.y][self.x];
+                if current_cell == Cell::Science && self.collected.len() < 1 {
+                    self.collected.push(current_cell);
+                    map.grid[self.y][self.x] = Cell::Empty;
+                    println!("🤖 Scientist collected a Scientist! Total collected: {}", self.collected.len());
+                }
+
+                // If we have a Scientist, return to station
+                if self.collected.len() >= 1 {
+                    if self.x == station_x && self.y == station_y {
+                        println!("🤖 Scientist depositing {} Scientists at station", self.collected.len());
+                        station.receive_resources(self.collected.drain(..).collect());
+                    } else {
+                        self.move_dijkstra_to(map, station_x, station_y);
+                    }
+                } else {
+                    // Look for nearest Scientist
+                    if let Some((target_x, target_y)) = self.find_nearest_scientist_position(map) {
+                        self.move_dijkstra_to(map, target_x, target_y);
+                    } else {
+                        // If no Scientists found, move randomly
+                        self.move_random(map);
                     }
                 }
             }
@@ -365,5 +394,33 @@ impl Robot {
             }
             self.move_forward(map);
         }
+    }
+
+    fn find_nearest_scientist_position(&self, map: &Map) -> Option<(usize, usize)> {
+        let mut queue = VecDeque::new();
+        let mut visited = HashSet::new();
+        queue.push_back((self.x, self.y));
+        visited.insert((self.x, self.y));
+
+        while let Some((x, y)) = queue.pop_front() {
+            let cell = map.grid[y][x];
+            if cell == Cell::Science {
+                return Some((x, y));
+            }
+
+            // Add neighbors to queue
+            for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
+                let nx = x as isize + dx;
+                let ny = y as isize + dy;
+                if nx >= 0 && ny >= 0 && nx < map.width as isize && ny < map.height as isize {
+                    let pos = (nx as usize, ny as usize);
+                    if !visited.contains(&pos) && map.grid[pos.1][pos.0] != Cell::Obstacle {
+                        queue.push_back(pos);
+                        visited.insert(pos);
+                    }
+                }
+            }
+        }
+        None
     }
 }
