@@ -134,22 +134,17 @@ impl Map {
     pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize, station: &Station) {
         let mut visible_cells = HashSet::new();
         
-        // Add station's vision
-        for y in station_y.saturating_sub(2)..=usize::min(station_y + 2, self.height - 1) {
-            for x in station_x.saturating_sub(2)..=usize::min(station_x + 2, self.width - 1) {
-                visible_cells.insert((x, y));
-            }
+        // Add station's initial vision
+        visible_cells.insert((station_x, station_y));
+
+        // Add robots' initial positions
+        for robot in robots {
+            visible_cells.insert((robot.x, robot.y));
         }
 
-        // Add robots' vision
-        for robot in robots {
-            if let RobotRole::Explorer = robot.role {
-                for y in robot.y.saturating_sub(2)..=usize::min(robot.y + 2, self.height - 1) {
-                    for x in robot.x.saturating_sub(2)..=usize::min(robot.x + 2, self.width - 1) {
-                        visible_cells.insert((x, y));
-                    }
-                }
-            }
+        // Add discovered cells from the station
+        for (&(x, y), _) in &station.discovered {
+            visible_cells.insert((x, y));
         }
     
         for y in 0..self.height {

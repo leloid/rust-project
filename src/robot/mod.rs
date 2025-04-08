@@ -75,7 +75,7 @@ impl Robot {
         }
     }
 
-    pub fn vision(&mut self, map: &Map, range: usize) {
+    pub fn vision(&mut self, map: &Map, range: usize, station: &mut crate::station::Station) {
         let min_x = self.x.saturating_sub(range);
         let max_x = usize::min(self.x + range, map.width - 1);
         let min_y = self.y.saturating_sub(range);
@@ -84,17 +84,23 @@ impl Robot {
         for y in min_y..=max_y {
             for x in min_x..=max_x {
                 let cell = map.grid[y][x];
-                self.discovered.push(((x, y), cell));
+                // Update the robot's discovered list
+                if !self.discovered.iter().any(|&((dx, dy), _)| dx == x && dy == y) {
+                    self.discovered.push(((x, y), cell));
+                }
+                // Update the station's discovered map
+                station.discovered.entry((x, y)).or_insert(cell);
             }
         }
     }
 
     pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize, station: &mut crate::station::Station) {
         // Update vision for all robots
-        self.vision(map, 2);
         
         match self.role {
             RobotRole::Explorer => {
+                self.vision(map, 1, station);
+                // Explorer moves towards unknown areas
                 self.move_smart_towards_unknown(map);
             }
             RobotRole::Collector => {

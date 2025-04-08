@@ -24,15 +24,15 @@ fn main() {
 
     // Création des robots
     let mut robots = vec![
-        // Robot::new(5, 3, Direction::East, RobotRole::Explorer),
-        Robot::new(1, 1, Direction::North, RobotRole::Collector),
+        Robot::new(5, 3, Direction::East, RobotRole::Explorer),
+        // Robot::new(1, 1, Direction::North, RobotRole::Collector),
         // Robot::new(1, 3, Direction::East, RobotRole::Collector),
     ];
 
     println!("🎮 Carte initiale avec brouillard de guerre");
     // map.display_with_entities(&robots, station_x, station_y);
-    map.display_with_entities(&robots, station_x, station_y);
-    // map.display_with_fog(&robots, station_x, station_y,&station);
+    // map.display_with_entities(&robots, station_x, station_y);
+    map.display_with_fog(&robots, station_x, station_y,&station);
 
     // Simulation de plusieurs ticks
     for tick in 1..=50 {
@@ -53,8 +53,8 @@ fn main() {
         // Affichage de la carte après chaque tick
         println!("\n🗺️ Carte après Tick {} :", tick);
         // map.display_with_fog(&robots, station_x, station_y);
-        // map.display_with_fog(&robots, station_x, station_y,&station);
-        map.display_with_entities(&robots, station_x, station_y);
+        map.display_with_fog(&robots, station_x, station_y,&station);
+        // map.display_with_entities(&robots, station_x, station_y);
         // Afficher les ressources restantes
         let mut minerals = 0;
         let mut energy = 0;
