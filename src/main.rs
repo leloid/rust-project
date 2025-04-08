@@ -25,8 +25,8 @@ fn main() {
     // Création des robots
     let mut robots = vec![
         Robot::new(5, 3, Direction::East, RobotRole::Explorer),
-        // Robot::new(1, 1, Direction::North, RobotRole::Collector),
-        // Robot::new(1, 3, Direction::East, RobotRole::Collector),
+        Robot::new(1, 1, Direction::North, RobotRole::Collector),
+        Robot::new(1, 3, Direction::East, RobotRole::Collector),
     ];
 
     println!("🎮 Carte initiale avec brouillard de guerre");
