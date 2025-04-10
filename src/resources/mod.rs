@@ -157,13 +157,33 @@ pub mod gui {
             }
         }
     }
-    
-    pub fn camera_zoom_system(
+
+    pub fn camera_pan_system(
+        buttons: Res<ButtonInput<MouseButton>>,
+        mut motion_evr: EventReader<MouseMotion>,
         mut scroll_evr: EventReader<MouseWheel>,
-        mut query: Query<&mut OrthographicProjection, With<Camera>>,
+        mut query: Query<(&mut Transform, &mut OrthographicProjection), With<Camera2d>>,
     ) {
+        // Handle pan
+        if buttons.pressed(MouseButton::Left) {
+            let mut delta = Vec2::ZERO;
+
+            for ev in motion_evr.read() {
+                delta += ev.delta;
+            }
+
+            if delta != Vec2::ZERO {
+                for (mut transform, _) in &mut query {
+                    // Scale the movement to make it more responsive
+                    let scale = 2.0;
+                    transform.translation.x -= delta.x * scale;
+                    transform.translation.y += delta.y * scale;
+                }
+            }
+        }
+
+        // Handle zoom
         let mut zoom_delta = 0.0;
-        
         for ev in scroll_evr.read() {
             match ev.unit {
                 MouseScrollUnit::Line => {
@@ -174,31 +194,10 @@ pub mod gui {
                 }
             }
         }
-        
+
         if zoom_delta != 0.0 {
-            for mut projection in &mut query {
+            for (_, mut projection) in &mut query {
                 projection.scale = (projection.scale - zoom_delta).clamp(0.1, 10.0);
-            }
-        }
-    }
-    
-    pub fn camera_pan_system(
-        mouse: Res<ButtonInput<MouseButton>>,
-        mut motion_evr: EventReader<MouseMotion>,
-        mut query: Query<&mut Transform, With<Camera>>,
-    ) {
-        if mouse.pressed(MouseButton::Right) {
-            let mut pan = Vec2::ZERO;
-            
-            for ev in motion_evr.read() {
-                pan += ev.delta;
-            }
-            
-            if pan != Vec2::ZERO {
-                for mut transform in &mut query {
-                    transform.translation.x -= pan.x;
-                    transform.translation.y += pan.y;
-                }
             }
         }
     }

@@ -8,12 +8,11 @@ use projet_essaim::station::Station;
 use projet_essaim::resources::gui::{
     setup_simulation,
     tick_simulation,
-    camera_zoom_system,
     camera_pan_system,
     SimulationData,
     SimulationTickTimer,
+    TILE_SIZE,
 };
-use bevy_pancam::PanCamPlugin;
 
 fn main() {
     let map = Map::new(MAP_WIDTH, MAP_HEIGHT, SEED);
@@ -44,24 +43,22 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(PanCamPlugin)
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_simulation)
         .add_systems(Update, tick_simulation)
-        .add_systems(Update, camera_zoom_system)
         .add_systems(Update, camera_pan_system)
         .run();
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2dBundle::default(),
-        bevy_pancam::PanCam {
-            grab_buttons: vec![MouseButton::Right],
-            enabled: true,
-            min_scale: 0.1,
-            max_scale: 10.0,
-            ..default()
-        },
-    ));
+    // Calculate the center of the map
+    let map_width = MAP_WIDTH as f32 * TILE_SIZE;
+    let map_height = MAP_HEIGHT as f32 * TILE_SIZE;
+    let center_x = map_width / 2.0;
+    let center_y = -map_height / 2.0;
+
+    commands.spawn(Camera2dBundle {
+        transform: Transform::from_xyz(center_x, center_y, 0.0),
+        ..default()
+    });
 }
