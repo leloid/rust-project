@@ -11,8 +11,10 @@ use projet_essaim::resources::gui::{
     camera_pan_system,
     update_legend_counts,
     update_fog_of_war,
+    update_tick_counter,
     SimulationData,
     SimulationTickTimer,
+    TickCounter,
     TILE_SIZE,
 };
 
@@ -24,9 +26,8 @@ fn main() {
     let station = Station::new(station_x, station_y);
 
     let robots = vec![
-        Robot::new(station_x, station_y -1 , Direction::East, RobotRole::Explorer),
-        Robot::new(station_x, station_y  - 2 , Direction::South, RobotRole::Explorer),
-        Robot::new(station_x, station_y  -3, Direction::West, RobotRole::Explorer),
+
+        Robot::new(station_x - 2, station_y, Direction::East, RobotRole::Explorer),
 
         Robot::new(station_x - 2, station_y, Direction::East, RobotRole::Collector),
         Robot::new(station_x + 2, station_y, Direction::North, RobotRole::Scientist),
@@ -41,6 +42,7 @@ fn main() {
             station_y,
         })
         .insert_resource(SimulationTickTimer::new())
+        .insert_resource(TickCounter::new())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Projet Essaim 🌍".to_string(),
@@ -54,6 +56,7 @@ fn main() {
         .add_systems(Update, camera_pan_system)
         .add_systems(Update, update_legend_counts)
         .add_systems(Update, update_fog_of_war)
+        .add_systems(Update, update_tick_counter)
         .run();
 }
 

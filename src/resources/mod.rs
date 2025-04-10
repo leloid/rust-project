@@ -4,7 +4,7 @@ use crate::station::Station;
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
-use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
+use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems, JustifyContent, Display};
 use std::collections::HashSet;
 use crate::config::FOG_OF_WAR;
 use std::collections::HashMap;
@@ -26,6 +26,17 @@ pub mod gui {
         pub timer: Timer,
     }
     
+    #[derive(Resource)]
+    pub struct TickCounter {
+        pub count: usize,
+    }
+    
+    impl TickCounter {
+        pub fn new() -> Self {
+            Self { count: 0 }
+        }
+    }
+    
     impl SimulationTickTimer {
         pub fn new() -> Self {
             Self {
@@ -36,6 +47,9 @@ pub mod gui {
     
     #[derive(Component)]
     pub struct MapTile;
+    
+    #[derive(Component)]
+    pub struct TickCounterSprite;
     
     #[derive(Component)]
     pub struct RobotSprite(pub usize);
@@ -57,6 +71,10 @@ pub mod gui {
     pub struct RobotCounter(pub RobotRole);
     
     pub const TILE_SIZE: f32 = 32.0;
+    
+    // Component for the tick counter display
+    #[derive(Component)]
+    pub struct TickCounterDisplay;
     
     pub fn setup_simulation(
         mut commands: Commands,
@@ -86,6 +104,60 @@ pub mod gui {
                 }
             }
         }
+        
+        // Add tick counter in the top right
+        commands.spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(10.0),
+                top: Val::Px(10.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.7)),
+            TickCounterDisplay,
+        )).with_children(|parent| {
+            // Tick title
+            parent.spawn((
+                Node {
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Text::new("Tick Counter"),
+                ));
+            });
+            
+            // Tick display
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                // Icon
+                parent.spawn((
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.2, 0.6, 1.0)), // Blue
+                ));
+                
+                // Count that will be updated
+                parent.spawn((
+                    Text::new("0"),
+                    TickCounterSprite,
+                ));
+            });
+        });
         
         // Spawn map tiles
         for y in 0..simulation.map.height {
@@ -509,13 +581,18 @@ pub mod gui {
         time: Res<Time>,
         mut timer: ResMut<SimulationTickTimer>,
         mut sim: ResMut<SimulationData>,
+        mut tick_counter: ResMut<TickCounter>,
         mut param_set: ParamSet<(
             Query<(&mut Transform, &RobotSprite)>,
             Query<(&mut Transform, &DirectionIndicator)>
         )>,
     ) {
         if timer.timer.tick(time.delta()).just_finished() {
-            println!("⏱️ Tick!");
+            // Increment tick counter
+            tick_counter.count += 1;
+            
+            // Show tick count in console
+            println!("⏱️ Tick! #{}", tick_counter.count);
             
             // Create local copies of the values we need
             let station_x = sim.station_x;
@@ -778,6 +855,26 @@ pub mod gui {
                 // Tile has not been discovered yet, keep it black
                 sprite.color = Color::srgb(0.0, 0.0, 0.0); // Black
             }
+        }
+    }
+
+    // System to update window title with tick count
+    pub fn update_window_title(
+        tick_counter: Res<TickCounter>,
+        mut windows: Query<&mut Window>,
+    ) {
+        if let Ok(mut window) = windows.get_single_mut() {
+            window.title = format!("Projet Essaim 🌍 - Tick: {}", tick_counter.count);
+        }
+    }
+
+    pub fn update_tick_counter(
+        tick_counter: Res<TickCounter>,
+        mut text_query: Query<&mut Text, With<TickCounterSprite>>,
+    ) {
+        if let Ok(mut text) = text_query.get_single_mut() {
+            // Update the text with the current tick count
+            *text = Text::new(format!("{}", tick_counter.count));
         }
     }
 }
