@@ -6,6 +6,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
 use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
 use std::collections::HashSet;
+use crate::config::FOG_OF_WAR;
 
 pub mod gui {
     use super::*;
@@ -60,17 +61,26 @@ pub mod gui {
         // Create visible cells set for fog of war
         let mut visible_cells = HashSet::new();
         
-        // Add station's initial vision
-        visible_cells.insert((simulation.station_x, simulation.station_y));
+        if FOG_OF_WAR {
+            // Add station's initial vision
+            visible_cells.insert((simulation.station_x, simulation.station_y));
 
-        // Add robots' initial positions
-        for robot in &simulation.robots {
-            visible_cells.insert((robot.x, robot.y));
-        }
+            // Add robots' initial positions
+            for robot in &simulation.robots {
+                visible_cells.insert((robot.x, robot.y));
+            }
 
-        // Add discovered cells from the station
-        for (&(x, y), _) in &simulation.station.discovered {
-            visible_cells.insert((x, y));
+            // Add discovered cells from the station
+            for (&(x, y), _) in &simulation.station.discovered {
+                visible_cells.insert((x, y));
+            }
+        } else {
+            // If FOG_OF_WAR is false, make all cells visible
+            for y in 0..simulation.map.height {
+                for x in 0..simulation.map.width {
+                    visible_cells.insert((x, y));
+                }
+            }
         }
         
         // Spawn map tiles
@@ -612,6 +622,11 @@ pub mod gui {
         simulation: Res<SimulationData>,
         mut tiles_query: Query<(&mut Sprite, &mut TilePosition)>,
     ) {
+        // Skip updating fog of war if it's disabled
+        if !FOG_OF_WAR {
+            return;
+        }
+        
         // Create visible cells set
         let mut visible_cells = HashSet::new();
         
