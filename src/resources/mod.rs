@@ -40,6 +40,16 @@ pub mod gui {
     #[derive(Component)]
     pub struct StationSprite;
     
+    #[derive(Component)]
+    struct ResourceLegend;
+
+    // Components for tracking counts in the legend
+    #[derive(Component)]
+    pub struct ResourceCounter(pub Cell);
+
+    #[derive(Component)]
+    pub struct RobotCounter(pub RobotRole);
+    
     pub const TILE_SIZE: f32 = 32.0;
     
     pub fn setup_simulation(
@@ -122,10 +132,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(1.0, 0.8, 0.0)), // Gold
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Energy"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Energy: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        ResourceCounter(Cell::Energy),
+                    ));
+                });
             });
 
             // Mineral
@@ -148,10 +171,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(0.6, 0.3, 0.8)), // Purple
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Mineral"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Mineral: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        ResourceCounter(Cell::Mineral),
+                    ));
+                });
             });
 
             // Science
@@ -174,10 +210,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(0.0, 0.8, 1.0)), // Cyan
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Science"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Science: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        ResourceCounter(Cell::Science),
+                    ));
+                });
             });
 
             // Title: Entities
@@ -239,10 +288,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(0.0, 1.0, 0.0)), // Green
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Explorer Robot"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Explorer Robot: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        RobotCounter(RobotRole::Explorer),
+                    ));
+                });
             });
 
             // Robot - Collector
@@ -265,10 +327,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(1.0, 0.5, 0.0)), // Orange
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Collector Robot"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Collector Robot: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        RobotCounter(RobotRole::Collector),
+                    ));
+                });
             });
 
             // Robot - Scientist
@@ -291,10 +366,23 @@ pub mod gui {
                     },
                     BackgroundColor(Color::srgb(0.8, 0.0, 0.8)), // Purple
                 ));
-                // Text label
+                // Text label and count
                 parent.spawn((
-                    Text::new("Scientist Robot"),
-                ));
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("Scientist Robot: "),
+                    ));
+                    // Count component that will be updated
+                    parent.spawn((
+                        Text::new("0"),
+                        RobotCounter(RobotRole::Scientist),
+                    ));
+                });
             });
         });
         
@@ -425,6 +513,63 @@ pub mod gui {
         }
     }
 
-    #[derive(Component)]
-    struct ResourceLegend;
+    // System to update resource and robot counts in the legend
+    pub fn update_legend_counts(
+        simulation: Res<SimulationData>,
+        mut param_set: ParamSet<(
+            Query<(&mut Text, &ResourceCounter)>,
+            Query<(&mut Text, &RobotCounter)>
+        )>,
+    ) {
+        // Count resources in the station
+        let mut energy_count = 0;
+        let mut mineral_count = 0;
+        let mut science_count = 0;
+
+        // Get resources from the station's resources_collected
+        for (&resource_type, &count) in simulation.station.resources_collected.iter() {
+            match resource_type {
+                Cell::Energy => energy_count = count,
+                Cell::Mineral => mineral_count = count,
+                Cell::Science => science_count = count,
+                _ => {}
+            }
+        }
+
+        // Count robots by role
+        let mut explorer_count = 0;
+        let mut collector_count = 0;
+        let mut scientist_count = 0;
+
+        for robot in &simulation.robots {
+            match robot.role {
+                RobotRole::Explorer => explorer_count += 1,
+                RobotRole::Collector => collector_count += 1,
+                RobotRole::Scientist => scientist_count += 1,
+            }
+        }
+
+        // Update resource count text
+        let mut resource_counters = param_set.p0();
+        for (mut text, counter) in resource_counters.iter_mut() {
+            let new_text = match counter.0 {
+                Cell::Energy => energy_count.to_string(),
+                Cell::Mineral => mineral_count.to_string(),
+                Cell::Science => science_count.to_string(),
+                _ => "0".to_string(),
+            };
+            *text = Text::new(new_text);
+        }
+
+        // Update robot count text
+        let mut robot_counters = param_set.p1();
+        for (mut text, counter) in robot_counters.iter_mut() {
+            let new_text = match counter.0 {
+                RobotRole::Explorer => explorer_count.to_string(),
+                RobotRole::Collector => collector_count.to_string(),
+                RobotRole::Scientist => scientist_count.to_string(),
+            };
+            *text = Text::new(new_text);
+        }
+    }
 }

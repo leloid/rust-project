@@ -9,6 +9,7 @@ use projet_essaim::resources::gui::{
     setup_simulation,
     tick_simulation,
     camera_pan_system,
+    update_legend_counts,
     SimulationData,
     SimulationTickTimer,
     TILE_SIZE,
@@ -47,6 +48,7 @@ fn main() {
         .add_systems(Startup, setup_simulation)
         .add_systems(Update, tick_simulation)
         .add_systems(Update, camera_pan_system)
+        .add_systems(Update, update_legend_counts)
         .run();
 }
 
@@ -57,8 +59,8 @@ fn setup_camera(mut commands: Commands) {
     let center_x = map_width / 2.0;
     let center_y = -map_height / 2.0;
 
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(center_x, center_y, 0.0),
-        ..default()
-    });
+    commands.spawn((
+        Camera2d::default(),
+        Transform::from_xyz(center_x, center_y, 0.0),
+    ));
 }
