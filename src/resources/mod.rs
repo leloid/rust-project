@@ -4,7 +4,7 @@ use crate::station::Station;
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
-use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems, JustifyContent, Display};
+use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
 use std::collections::HashSet;
 use crate::config::FOG_OF_WAR;
 use std::collections::HashMap;
@@ -29,6 +29,30 @@ pub mod gui {
     #[derive(Resource)]
     pub struct TickCounter {
         pub count: usize,
+    }
+    
+    // New resource to track if simulation is paused
+    #[derive(Resource)]
+    pub struct SimulationPaused {
+        pub paused: bool,
+    }
+    
+    // Speed multiplier for simulation
+    #[derive(Resource)]
+    pub struct TickSpeedMultiplier {
+        pub value: f32,
+    }
+    
+    impl TickSpeedMultiplier {
+        pub fn new() -> Self {
+            Self { value: 1.0 }
+        }
+    }
+    
+    impl SimulationPaused {
+        pub fn new() -> Self {
+            Self { paused: false }
+        }
     }
     
     impl TickCounter {
@@ -62,6 +86,14 @@ pub mod gui {
     
     #[derive(Component)]
     struct ResourceLegend;
+
+    // Component for play/pause button
+    #[derive(Component)]
+    pub struct PlayPauseButton;
+
+    // Component for the speed indicator display
+    #[derive(Component)]
+    pub struct SpeedIndicator;
 
     // Components for tracking counts in the legend
     #[derive(Component)]
@@ -157,6 +189,48 @@ pub mod gui {
                     TickCounterSprite,
                 ));
             });
+        });
+        
+        // Add speed indicator in the bottom left
+        commands.spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(10.0),
+                bottom: Val::Px(10.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.1, 0.1, 0.1).with_alpha(0.7)),
+            SpeedIndicator,
+        )).with_children(|parent| {
+            parent.spawn((
+                Text::new("Speed: 1.0x"),
+            ));
+            
+            parent.spawn((
+                Text::new("Press +/- to adjust"),
+            ));
+        });
+        
+        // Add play/pause button in the bottom right
+        commands.spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(10.0),
+                bottom: Val::Px(10.0),
+                width: Val::Px(100.0),
+                height: Val::Px(50.0),
+                padding: UiRect::all(Val::Px(5.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.2, 0.6, 0.2)),
+            PlayPauseButton,
+            Interaction::default(),
+        )).with_children(|parent| {
+            parent.spawn((
+                Text::new("Play"),
+                PlayPauseText,
+            ));
         });
         
         // Spawn map tiles
@@ -582,11 +656,17 @@ pub mod gui {
         mut timer: ResMut<SimulationTickTimer>,
         mut sim: ResMut<SimulationData>,
         mut tick_counter: ResMut<TickCounter>,
+        paused: Res<SimulationPaused>,
         mut param_set: ParamSet<(
             Query<(&mut Transform, &RobotSprite)>,
             Query<(&mut Transform, &DirectionIndicator)>
         )>,
     ) {
+        // Skip updating if simulation is paused
+        if paused.paused {
+            return;
+        }
+        
         if timer.timer.tick(time.delta()).just_finished() {
             // Increment tick counter
             tick_counter.count += 1;
@@ -875,6 +955,98 @@ pub mod gui {
         if let Ok(mut text) = text_query.get_single_mut() {
             // Update the text with the current tick count
             *text = Text::new(format!("{}", tick_counter.count));
+        }
+    }
+
+    // Component to identify the text in the play/pause button
+    #[derive(Component)]
+    pub struct PlayPauseText;
+
+    // New system to handle the play/pause button
+    pub fn handle_play_pause_button(
+        mut interaction_query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<PlayPauseButton>)>,
+        mut text_query: Query<&mut Text, With<PlayPauseText>>,
+        mut paused: ResMut<SimulationPaused>,
+    ) {
+        for (interaction, mut background_color) in interaction_query.iter_mut() {
+            // Get the text to update
+            if let Ok(mut text) = text_query.get_single_mut() {
+                match *interaction {
+                    Interaction::Pressed => {
+                        // Toggle paused state
+                        paused.paused = !paused.paused;
+                        
+                        // Update button appearance based on state
+                        if paused.paused {
+                            *background_color = BackgroundColor(Color::srgb(0.6, 0.2, 0.2)); // Red for paused
+                            *text = Text::new("Paused");
+                        } else {
+                            *background_color = BackgroundColor(Color::srgb(0.2, 0.6, 0.2)); // Green for playing
+                            *text = Text::new("Play");
+                        }
+                    }
+                    Interaction::Hovered => {
+                        // Highlight button when hovered
+                        if paused.paused {
+                            *background_color = BackgroundColor(Color::srgb(0.7, 0.3, 0.3));
+                        } else {
+                            *background_color = BackgroundColor(Color::srgb(0.3, 0.7, 0.3));
+                        }
+                    }
+                    Interaction::None => {
+                        // Reset to normal color when not interacting
+                        if paused.paused {
+                            *background_color = BackgroundColor(Color::srgb(0.6, 0.2, 0.2));
+                        } else {
+                            *background_color = BackgroundColor(Color::srgb(0.2, 0.6, 0.2));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // System to update the speed indicator
+    pub fn update_speed_indicator(
+        speed_multiplier: Res<TickSpeedMultiplier>,
+        query: Query<&Children, With<SpeedIndicator>>,
+        mut text_query: Query<&mut Text>,
+    ) {
+        if let Ok(children) = query.get_single() {
+            if let Some(&first_child) = children.first() {
+                if let Ok(mut text) = text_query.get_mut(first_child) {
+                    *text = Text::new(format!("Speed: {:.1}x", speed_multiplier.value));
+                }
+            }
+        }
+    }
+    
+    // System to handle keyboard input for adjusting simulation speed
+    pub fn handle_speed_keyboard(
+        keys: Res<ButtonInput<KeyCode>>,
+        mut speed_multiplier: ResMut<TickSpeedMultiplier>,
+        mut timer: ResMut<SimulationTickTimer>,
+    ) {
+        let mut changed = false;
+        
+        if keys.just_pressed(KeyCode::Equal) || keys.just_pressed(KeyCode::NumpadAdd) {
+            speed_multiplier.value = (speed_multiplier.value + 0.5).min(5.0);
+            changed = true;
+        }
+        
+        if keys.just_pressed(KeyCode::Minus) || keys.just_pressed(KeyCode::NumpadSubtract) {
+            speed_multiplier.value = (speed_multiplier.value - 0.5).max(0.5);
+            changed = true;
+        }
+        
+        // Update timer duration if speed changed
+        if changed {
+            let base_duration = std::time::Duration::from_millis(500);
+            let new_duration = std::time::Duration::from_millis(
+                (base_duration.as_millis() as f32 / speed_multiplier.value) as u64
+            );
+            timer.timer.set_duration(new_duration);
+            println!("Speed set to {:.1}x", speed_multiplier.value);
         }
     }
 }

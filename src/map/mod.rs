@@ -1,7 +1,6 @@
 use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
-use crate::robot::RobotRole;
 use crate::station::Station;
 use std::collections::HashSet;
 

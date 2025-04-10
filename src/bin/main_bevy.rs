@@ -12,10 +12,16 @@ use projet_essaim::resources::gui::{
     update_legend_counts,
     update_fog_of_war,
     update_tick_counter,
+    update_window_title,
+    handle_speed_keyboard,
+    handle_play_pause_button,
     SimulationData,
     SimulationTickTimer,
     TickCounter,
+    TickSpeedMultiplier,
+    SimulationPaused,
     TILE_SIZE,
+    update_speed_indicator,
 };
 
 fn main() {
@@ -26,9 +32,7 @@ fn main() {
     let station = Station::new(station_x, station_y);
 
     let robots = vec![
-
         Robot::new(station_x - 2, station_y, Direction::East, RobotRole::Explorer),
-
         Robot::new(station_x - 2, station_y, Direction::East, RobotRole::Collector),
         Robot::new(station_x + 2, station_y, Direction::North, RobotRole::Scientist),
     ];
@@ -43,6 +47,8 @@ fn main() {
         })
         .insert_resource(SimulationTickTimer::new())
         .insert_resource(TickCounter::new())
+        .insert_resource(TickSpeedMultiplier::new())
+        .insert_resource(SimulationPaused::new())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Projet Essaim 🌍".to_string(),
@@ -57,6 +63,10 @@ fn main() {
         .add_systems(Update, update_legend_counts)
         .add_systems(Update, update_fog_of_war)
         .add_systems(Update, update_tick_counter)
+        .add_systems(Update, update_speed_indicator)
+        .add_systems(Update, handle_speed_keyboard)
+        .add_systems(Update, handle_play_pause_button)
+        .add_systems(Update, update_window_title)
         .run();
 }
 
