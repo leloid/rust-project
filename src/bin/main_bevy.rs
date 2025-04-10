@@ -15,6 +15,7 @@ use projet_essaim::resources::gui::{
     update_window_title,
     handle_speed_keyboard,
     handle_play_pause_button,
+    handle_speed_buttons,
     SimulationData,
     SimulationTickTimer,
     TickCounter,
@@ -65,6 +66,7 @@ fn main() {
         .add_systems(Update, update_tick_counter)
         .add_systems(Update, update_speed_indicator)
         .add_systems(Update, handle_speed_keyboard)
+        .add_systems(Update, handle_speed_buttons)
         .add_systems(Update, handle_play_pause_button)
         .add_systems(Update, update_window_title)
         .run();

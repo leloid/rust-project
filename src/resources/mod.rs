@@ -4,7 +4,7 @@ use crate::station::Station;
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
-use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
+use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems, JustifyContent};
 use std::collections::HashSet;
 use crate::config::FOG_OF_WAR;
 use std::collections::HashMap;
@@ -108,6 +108,13 @@ pub mod gui {
     #[derive(Component)]
     pub struct TickCounterDisplay;
     
+    // Components for the speed buttons
+    #[derive(Component)]
+    pub struct SpeedIncreaseButton;
+    
+    #[derive(Component)]
+    pub struct SpeedDecreaseButton;
+
     pub fn setup_simulation(
         mut commands: Commands,
         simulation: Res<SimulationData>,
@@ -191,25 +198,69 @@ pub mod gui {
             });
         });
         
-        // Add speed indicator in the bottom left
+        // Add speed indicator and controls in the bottom left
         commands.spawn((
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(10.0),
                 bottom: Val::Px(10.0),
                 padding: UiRect::all(Val::Px(10.0)),
+                flex_direction: FlexDirection::Column,
                 ..default()
             },
             BackgroundColor(Color::srgb(0.1, 0.1, 0.1).with_alpha(0.7)),
             SpeedIndicator,
         )).with_children(|parent| {
+            // Speed display
             parent.spawn((
                 Text::new("Speed: 1.0x"),
             ));
             
+            // Speed buttons container
             parent.spawn((
-                Text::new("Press +/- to adjust"),
-            ));
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    margin: UiRect::top(Val::Px(5.0)),
+                    justify_content: JustifyContent::SpaceBetween,
+                    width: Val::Px(120.0),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                // Decrease speed button
+                parent.spawn((
+                    Node {
+                        width: Val::Px(50.0),
+                        height: Val::Px(30.0),
+                        padding: UiRect::all(Val::Px(5.0)),
+                        margin: UiRect::right(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.6, 0.2, 0.2)),
+                    SpeedDecreaseButton,
+                    Interaction::default(),
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("-"),
+                    ));
+                });
+                
+                // Increase speed button
+                parent.spawn((
+                    Node {
+                        width: Val::Px(50.0),
+                        height: Val::Px(30.0),
+                        padding: UiRect::all(Val::Px(5.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.2, 0.6, 0.2)),
+                    SpeedIncreaseButton,
+                    Interaction::default(),
+                )).with_children(|parent| {
+                    parent.spawn((
+                        Text::new("+"),
+                    ));
+                });
+            });
         });
         
         // Add play/pause button in the bottom right
@@ -1041,6 +1092,73 @@ pub mod gui {
         
         // Update timer duration if speed changed
         if changed {
+            let base_duration = std::time::Duration::from_millis(500);
+            let new_duration = std::time::Duration::from_millis(
+                (base_duration.as_millis() as f32 / speed_multiplier.value) as u64
+            );
+            timer.timer.set_duration(new_duration);
+            println!("Speed set to {:.1}x", speed_multiplier.value);
+        }
+    }
+    
+    // System to handle the speed buttons
+    pub fn handle_speed_buttons(
+        mut param_set: ParamSet<(
+            Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<SpeedIncreaseButton>)>,
+            Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<SpeedDecreaseButton>)>
+        )>,
+        mut speed_multiplier: ResMut<TickSpeedMultiplier>,
+        mut timer: ResMut<SimulationTickTimer>,
+    ) {
+        // Handle increase button
+        let mut changed = false;
+        let mut new_speed = speed_multiplier.value;
+        
+        {
+            let mut increase_query = param_set.p0();
+            for (interaction, mut background_color) in increase_query.iter_mut() {
+                match *interaction {
+                    Interaction::Pressed => {
+                        // Increase speed
+                        new_speed = (new_speed + 0.5).min(5.0);
+                        changed = true;
+                    }
+                    Interaction::Hovered => {
+                        // Highlight button
+                        *background_color = BackgroundColor(Color::srgb(0.3, 0.7, 0.3));
+                    }
+                    Interaction::None => {
+                        // Reset to normal color
+                        *background_color = BackgroundColor(Color::srgb(0.2, 0.6, 0.2));
+                    }
+                }
+            }
+        }
+        
+        {
+            let mut decrease_query = param_set.p1();
+            for (interaction, mut background_color) in decrease_query.iter_mut() {
+                match *interaction {
+                    Interaction::Pressed => {
+                        // Decrease speed
+                        new_speed = (new_speed - 0.5).max(0.5);
+                        changed = true;
+                    }
+                    Interaction::Hovered => {
+                        // Highlight button
+                        *background_color = BackgroundColor(Color::srgb(0.7, 0.3, 0.3));
+                    }
+                    Interaction::None => {
+                        // Reset to normal color
+                        *background_color = BackgroundColor(Color::srgb(0.6, 0.2, 0.2));
+                    }
+                }
+            }
+        }
+        
+        // Update the speed if changed
+        if changed {
+            speed_multiplier.value = new_speed;
             let base_duration = std::time::Duration::from_millis(500);
             let new_duration = std::time::Duration::from_millis(
                 (base_duration.as_millis() as f32 / speed_multiplier.value) as u64
