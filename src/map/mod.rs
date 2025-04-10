@@ -39,10 +39,16 @@ impl Map {
 
         let mut rng = StdRng::seed_from_u64(seed);
 
+        // Calculate resource counts based on map size
+        let map_area = width * height;
+        let energy_count = (map_area as f32 * 0.05) as usize; // 5% of map area
+        let mineral_count = (map_area as f32 * 0.05) as usize; // 5% of map area
+        let science_count = (map_area as f32 * 0.03) as usize; // 3% of map area
+
         // Place resources
-        Map::place_random(&mut grid, Cell::Energy, 20, &mut rng);
-        Map::place_random(&mut grid, Cell::Mineral, 20, &mut rng);
-        Map::place_random(&mut grid, Cell::Science, 10, &mut rng);
+        Map::place_random(&mut grid, Cell::Energy, energy_count, &mut rng);
+        Map::place_random(&mut grid, Cell::Mineral, mineral_count, &mut rng);
+        Map::place_random(&mut grid, Cell::Science, science_count, &mut rng);
 
         Self { width, height, grid }
     }
