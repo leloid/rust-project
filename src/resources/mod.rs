@@ -4,6 +4,7 @@ use crate::station::Station;
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
+use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
 
 pub mod gui {
     use super::*;
@@ -74,6 +75,130 @@ pub mod gui {
                 ));
             }
         }
+        
+        // Add resource legend
+        commands.spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(10.0),
+                top: Val::Px(10.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.1, 0.1, 0.1).with_alpha(0.7)),
+            ResourceLegend,
+        )).with_children(|parent| {
+            // Energy
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(1.0, 0.8, 0.0),
+                        custom_size: Some(Vec2::splat(20.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+                parent.spawn((
+                    Text::new("Energy"),
+                ));
+            });
+
+            // Mineral
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(0.6, 0.3, 0.8),
+                        custom_size: Some(Vec2::splat(20.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+                parent.spawn((
+                    Text::new("Mineral"),
+                ));
+            });
+
+            // Science
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(0.0, 0.8, 1.0),
+                        custom_size: Some(Vec2::splat(20.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+                parent.spawn((
+                    Text::new("Science"),
+                ));
+            });
+
+            // Station
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(1.0, 0.0, 0.0),
+                        custom_size: Some(Vec2::splat(20.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+                parent.spawn((
+                    Text::new("Station"),
+                ));
+            });
+
+            // Robots
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(0.0, 1.0, 0.0),
+                        custom_size: Some(Vec2::splat(20.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                ));
+                parent.spawn((
+                    Text::new("Robot"),
+                ));
+            });
+        });
         
         // Spawn station
         let station_pos = Vec3::new(
@@ -201,4 +326,7 @@ pub mod gui {
             }
         }
     }
+
+    #[derive(Component)]
+    struct ResourceLegend;
 }
