@@ -97,13 +97,19 @@ impl Robot {
 
     pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize, station: &mut crate::station::Station) {
         // Update vision for all robots
+        self.vision(map, 2, station);
         
         match self.role {
             RobotRole::Explorer => {
-                self.vision(map, 1, station);
-
-                // Explorer moves towards unknown areas
-                self.move_smart_towards_unknown(map);
+                // Check if we're at the station to deposit discoveries
+                if self.x == station_x && self.y == station_y {
+                    // We're at the station, we've already shared discoveries in vision()
+                    // Now move away from station
+                    self.move_smart_towards_unknown_with_others(map, station.get_explorer_positions());
+                } else {
+                    // Normal exploration - use the new spreading algorithm
+                    self.move_smart_towards_unknown_with_others(map, station.get_explorer_positions());
+                }
             }
             RobotRole::Collector => {
                 // Check if we're on a resource and collect it
@@ -133,28 +139,28 @@ impl Robot {
                 }
             }
             RobotRole::Scientist => {
-                // Check if we're on a Scientist and collect it
+                // Check if we're on a Science resource and collect it
                 let current_cell = map.grid[self.y][self.x];
                 if current_cell == Cell::Science && self.collected.len() < 1 {
                     self.collected.push(current_cell);
                     map.grid[self.y][self.x] = Cell::Empty;
-                    println!("🤖 Scientist collected a Scientist! Total collected: {}", self.collected.len());
+                    println!("🤖 Scientist collected a science resource! Total collected: {}", self.collected.len());
                 }
 
-                // If we have a Scientist, return to station
+                // If we have a science resource, return to station
                 if self.collected.len() >= 1 {
                     if self.x == station_x && self.y == station_y {
-                        println!("🤖 Scientist depositing {} Scientists at station", self.collected.len());
+                        println!("🤖 Scientist depositing {} science resources at station", self.collected.len());
                         station.receive_resources(self.collected.drain(..).collect());
                     } else {
                         self.move_dijkstra_to(map, station_x, station_y);
                     }
                 } else {
-                    // Look for nearest Scientist
+                    // Look for nearest science resource
                     if let Some((target_x, target_y)) = self.find_nearest_scientist_position(map) {
                         self.move_dijkstra_to(map, target_x, target_y);
                     } else {
-                        // If no Scientists found, move randomly
+                        // If no science resources found, move randomly
                         self.move_random(map);
                     }
                 }
@@ -422,5 +428,124 @@ impl Robot {
             }
         }
         None
+    }
+
+    fn move_smart_towards_unknown_with_others(&mut self, map: &Map, other_explorers: &[(usize, usize)]) {
+        let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+        let mut visited = HashSet::new();
+        let mut came_from = vec![vec![None; map.width]; map.height];
+        
+        // Create a cost map where cells near other explorers have higher costs
+        let mut cost_map = vec![vec![1usize; map.width]; map.height];
+        
+        // Add higher costs to areas near other explorers to encourage spreading out
+        for &(ex, ey) in other_explorers {
+            // Skip if this is the current robot
+            if ex == self.x && ey == self.y {
+                continue;
+            }
+            
+            // Define an influence radius (how far to avoid other explorers)
+            let influence_radius = 8;
+            
+            // Add higher costs in a radius around other explorers
+            for y in ey.saturating_sub(influence_radius)..=(ey + influence_radius).min(map.height - 1) {
+                for x in ex.saturating_sub(influence_radius)..=(ex + influence_radius).min(map.width - 1) {
+                    // Calculate Manhattan distance
+                    let distance = (x as isize - ex as isize).abs() + (y as isize - ey as isize).abs();
+                    
+                    if distance < influence_radius as isize {
+                        // Inverse relationship: closer = higher cost
+                        let additional_cost = influence_radius as usize - distance as usize;
+                        cost_map[y][x] += additional_cost * 3; // Multiply by a factor to increase the effect
+                    }
+                }
+            }
+        }
+        
+        // Start from the current position
+        queue.push_back((self.x, self.y));
+        visited.insert((self.x, self.y));
+        
+        // Keep track of the best target and its cost
+        let mut best_target: Option<(usize, usize)> = None;
+        let mut best_cost = usize::MAX;
+        
+        // BFS with cost consideration to find the best unknown cell
+        while let Some((cx, cy)) = queue.pop_front() {
+            // Check if this is an unknown cell
+            if !self.discovered.iter().any(|&((x, y), _)| x == cx && y == cy) {
+                // Calculate total cost to reach this cell
+                let mut total_cost = 0;
+                let mut current_pos = Some((cx, cy));
+                
+                while let Some((x, y)) = current_pos {
+                    total_cost += cost_map[y][x];
+                    current_pos = came_from[y][x];
+                }
+                
+                // If this path has a lower cost than the current best, update it
+                if total_cost < best_cost {
+                    best_target = Some((cx, cy));
+                    best_cost = total_cost;
+                }
+                
+                // Don't break immediately; check all cells at the current BFS depth
+                if queue.is_empty() || queue.front().map(|&(x, y)| 
+                    !self.discovered.iter().any(|&((dx, dy), _)| dx == x && dy == y)
+                ).unwrap_or(false) {
+                    break;
+                }
+            }
+            
+            // Add neighbors to the queue
+            for (dx, dy) in [(0isize, -1), (0, 1), (-1, 0), (1, 0)] {
+                let nx = cx as isize + dx;
+                let ny = cy as isize + dy;
+                
+                if nx >= 0 && ny >= 0 && (nx as usize) < map.width && (ny as usize) < map.height {
+                    let ux = nx as usize;
+                    let uy = ny as usize;
+                    if !visited.contains(&(ux, uy)) && map.grid[uy][ux] != Cell::Obstacle {
+                        visited.insert((ux, uy));
+                        came_from[uy][ux] = Some((cx, cy));
+                        queue.push_back((ux, uy));
+                    }
+                }
+            }
+        }
+        
+        // If we found a target, reconstruct the path and move
+        if let Some((tx, ty)) = best_target {
+            let mut path = vec![(tx, ty)];
+            let mut current = came_from[ty][tx];
+            
+            while let Some((cx, cy)) = current {
+                if (cx, cy) == (self.x, self.y) {
+                    break;
+                }
+                path.push((cx, cy));
+                current = came_from[cy][cx];
+            }
+            
+            path.reverse();
+            
+            if let Some(&(nx, ny)) = path.get(0) {
+                if nx > self.x {
+                    self.direction = Direction::East;
+                } else if nx < self.x {
+                    self.direction = Direction::West;
+                } else if ny > self.y {
+                    self.direction = Direction::South;
+                } else if ny < self.y {
+                    self.direction = Direction::North;
+                }
+                self.move_forward(map);
+                return;
+            }
+        }
+        
+        // Fallback to random movement if no path found
+        self.move_random(map);
     }
 }

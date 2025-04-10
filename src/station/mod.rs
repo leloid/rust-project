@@ -10,6 +10,7 @@ pub struct Station {
     pub resources_collected: HashMap<Cell, usize>,   // resources collected by collectors
     pub robots_created: usize,
     pub scientific_discoveries: usize,
+    pub explorer_positions: Vec<(usize, usize)>,   // Keep track of explorer positions
 }
 
 impl Station {
@@ -21,10 +22,24 @@ impl Station {
             resources_collected: HashMap::new(),
             robots_created: 0,
             scientific_discoveries: 0,
+            explorer_positions: Vec::new(),
         }
     }
 
+    // Update explorer positions
+    pub fn update_explorer_positions(&mut self, explorers: &[&Robot]) {
+        self.explorer_positions.clear();
+        for explorer in explorers {
+            if explorer.role == RobotRole::Explorer {
+                self.explorer_positions.push((explorer.x, explorer.y));
+            }
+        }
+    }
 
+    // Get explorer positions
+    pub fn get_explorer_positions(&self) -> &[(usize, usize)] {
+        &self.explorer_positions
+    }
 
     pub fn receive_resources(&mut self, collected_cells: Vec<Cell>) {
         for cell in collected_cells {

@@ -482,6 +482,13 @@ pub mod gui {
             let mut map_clone = sim.map.clone();
             let mut station_clone = sim.station.clone();
             
+            // Update explorer positions in the station
+            {
+                // Collect references to all robots
+                let robot_refs: Vec<&Robot> = sim.robots.iter().collect();
+                station_clone.update_explorer_positions(&robot_refs);
+            }
+            
             // Update robots one at a time
             for robot in &mut sim.robots {
                 // Update the robot with the cloned data
