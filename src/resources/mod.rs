@@ -624,6 +624,22 @@ pub mod gui {
     ) {
         // Skip updating fog of war if it's disabled
         if !FOG_OF_WAR {
+            // Even if fog of war is disabled, we still need to update resource visibility
+            for (mut sprite, pos) in tiles_query.iter_mut() {
+                // Check if the cell in the map still has a resource
+                // If not, we should update it to show as empty
+                if pos.discovered {
+                    // Determine the actual current state of the cell
+                    // It might have changed if resources were collected
+                    sprite.color = match simulation.map.grid[pos.y][pos.x] {
+                        Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
+                        Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
+                        Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
+                        Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
+                        Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
+                    };
+                }
+            }
             return;
         }
         
@@ -650,16 +666,19 @@ pub mod gui {
             if is_visible {
                 // Tile is now visible
                 if !pos.discovered {
-                    // First time seeing this tile, update its color
-                    sprite.color = match simulation.map.grid[pos.y][pos.x] {
-                        Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
-                        Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
-                        Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
-                        Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
-                        Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
-                    };
+                    // First time seeing this tile
                     pos.discovered = true;
                 }
+                
+                // Always update the color to reflect current state
+                // This ensures resources disappear when collected
+                sprite.color = match simulation.map.grid[pos.y][pos.x] {
+                    Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
+                    Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
+                    Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
+                    Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
+                    Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
+                };
             } else if !pos.discovered {
                 // Tile has not been discovered yet, keep it black
                 sprite.color = Color::srgb(0.0, 0.0, 0.0); // Black
