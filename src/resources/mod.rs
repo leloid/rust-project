@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
 use bevy::input::ButtonInput;
 use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
+use std::collections::HashSet;
 
 pub mod gui {
     use super::*;
@@ -56,6 +57,22 @@ pub mod gui {
         mut commands: Commands,
         simulation: Res<SimulationData>,
     ) {
+        // Create visible cells set for fog of war
+        let mut visible_cells = HashSet::new();
+        
+        // Add station's initial vision
+        visible_cells.insert((simulation.station_x, simulation.station_y));
+
+        // Add robots' initial positions
+        for robot in &simulation.robots {
+            visible_cells.insert((robot.x, robot.y));
+        }
+
+        // Add discovered cells from the station
+        for (&(x, y), _) in &simulation.station.discovered {
+            visible_cells.insert((x, y));
+        }
+        
         // Spawn map tiles
         for y in 0..simulation.map.height {
             for x in 0..simulation.map.width {
@@ -65,12 +82,20 @@ pub mod gui {
                     0.0,
                 );
                 
-                let color = match simulation.map.grid[y][x] {
-                    Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
-                    Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
-                    Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
-                    Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
-                    Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
+                let is_visible = visible_cells.contains(&(x, y));
+                let discovered = is_visible;
+                
+                // Only render with actual cell colors if the cell is visible
+                let color = if is_visible {
+                    match simulation.map.grid[y][x] {
+                        Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
+                        Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
+                        Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
+                        Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
+                        Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
+                    }
+                } else {
+                    Color::srgb(0.0, 0.0, 0.0) // Black for undiscovered cells
                 };
                 
                 commands.spawn((
@@ -82,6 +107,7 @@ pub mod gui {
                     Transform::from_translation(position),
                     Visibility::Visible,
                     MapTile,
+                    TilePosition { x, y, discovered },
                 ));
             }
         }
@@ -570,6 +596,59 @@ pub mod gui {
                 RobotRole::Scientist => scientist_count.to_string(),
             };
             *text = Text::new(new_text);
+        }
+    }
+
+    // Component to store tile position for fog of war updates
+    #[derive(Component)]
+    pub struct TilePosition {
+        pub x: usize,
+        pub y: usize,
+        pub discovered: bool,
+    }
+
+    // System to update tile visibility based on fog of war
+    pub fn update_fog_of_war(
+        simulation: Res<SimulationData>,
+        mut tiles_query: Query<(&mut Sprite, &mut TilePosition)>,
+    ) {
+        // Create visible cells set
+        let mut visible_cells = HashSet::new();
+        
+        // Add station's initial vision
+        visible_cells.insert((simulation.station_x, simulation.station_y));
+
+        // Add robots' initial positions
+        for robot in &simulation.robots {
+            visible_cells.insert((robot.x, robot.y));
+        }
+
+        // Add discovered cells from the station
+        for (&(x, y), _) in &simulation.station.discovered {
+            visible_cells.insert((x, y));
+        }
+        
+        // Update tile visibility
+        for (mut sprite, mut pos) in tiles_query.iter_mut() {
+            let is_visible = visible_cells.contains(&(pos.x, pos.y));
+            
+            if is_visible {
+                // Tile is now visible
+                if !pos.discovered {
+                    // First time seeing this tile, update its color
+                    sprite.color = match simulation.map.grid[pos.y][pos.x] {
+                        Cell::Empty => Color::srgb(0.8, 0.8, 0.8),    // Light gray
+                        Cell::Obstacle => Color::srgb(0.3, 0.3, 0.3), // Dark gray
+                        Cell::Energy => Color::srgb(1.0, 0.8, 0.0),   // Gold
+                        Cell::Mineral => Color::srgb(0.6, 0.3, 0.8),  // Purple
+                        Cell::Science => Color::srgb(0.0, 0.8, 1.0),  // Cyan
+                    };
+                    pos.discovered = true;
+                }
+            } else if !pos.discovered {
+                // Tile has not been discovered yet, keep it black
+                sprite.color = Color::srgb(0.0, 0.0, 0.0); // Black
+            }
         }
     }
 }

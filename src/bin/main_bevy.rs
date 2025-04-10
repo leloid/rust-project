@@ -10,6 +10,7 @@ use projet_essaim::resources::gui::{
     tick_simulation,
     camera_pan_system,
     update_legend_counts,
+    update_fog_of_war,
     SimulationData,
     SimulationTickTimer,
     TILE_SIZE,
@@ -49,6 +50,7 @@ fn main() {
         .add_systems(Update, tick_simulation)
         .add_systems(Update, camera_pan_system)
         .add_systems(Update, update_legend_counts)
+        .add_systems(Update, update_fog_of_war)
         .run();
 }
 
