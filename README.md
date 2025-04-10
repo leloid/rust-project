@@ -4,7 +4,7 @@
 
 ## Démonstration
 
-[Vidéo de démonstration](docs/video.mov)
+[Vidéo de démonstration](https://github.com/leloid/rust-project/blob/main/docs/video.mov)
 
 *Note: Une copie de la vidéo de démonstration est disponible dans le dossier `docs/`.*
 
