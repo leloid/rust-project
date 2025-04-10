@@ -27,6 +27,7 @@ pub struct Robot {
     pub collected: Vec<Cell>,  // Resources collected by the collector
     pub target_resource: Option<Cell>,  // Current target resource type
     pub current_path: Vec<(usize, usize)>,  // Current path to follow
+    pub preferred_direction: Option<(isize, isize)>, // Preferred exploration direction
 }
 
 impl Robot {
@@ -37,10 +38,11 @@ impl Robot {
             direction,
             role,
             discovered: Vec::new(),
-            collected: Vec::new(),
+            collected: Vec::new(), 
             target_resource: None,
             current_path: Vec::new(),
-        }
+            preferred_direction: None,
+        }        
     }
 
     pub fn turn_left(&mut self) {
@@ -87,7 +89,7 @@ impl Robot {
                 let cell = map.grid[y][x];
                 // Update the robot's discovered list
                 if !self.discovered.iter().any(|&((dx, dy), _)| dx == x && dy == y) {
-                    self.discovered.push(((x, y), cell));
+                self.discovered.push(((x, y), cell));
                 }
                 // Update the station's discovered map
                 station.discovered.entry((x, y)).or_insert(cell);
@@ -136,7 +138,7 @@ impl Robot {
                         // If no resources found, explore
                         self.move_smart_towards_unknown(map);
                     }
-                }
+                }            
             }
             RobotRole::Scientist => {
                 // Check if we're on a Science resource and collect it
@@ -161,7 +163,7 @@ impl Robot {
                         self.move_dijkstra_to(map, target_x, target_y);
                     } else {
                         // If no science resources found, move randomly
-                        self.move_random(map);
+                    self.move_random(map);
                     }
                 }
             }
@@ -239,7 +241,7 @@ impl Robot {
         }
         None
     }
-
+    
     fn move_random(&mut self, map: &Map) {
         let mut rng = rand::thread_rng();
         let dir = rng.gen_range(0..4);
@@ -256,23 +258,23 @@ impl Robot {
         let mut queue = VecDeque::new();
         let mut visited = HashSet::new();
         let mut came_from = vec![vec![None; map.width]; map.height];
-
+    
         queue.push_back((self.x, self.y));
         visited.insert((self.x, self.y));
-
+    
         let mut target: Option<(usize, usize)> = None;
-
+    
         while let Some((cx, cy)) = queue.pop_front() {
             // Trouve une case inconnue atteignable
             if !self.discovered.iter().any(|&((x, y), _)| x == cx && y == cy) {
                 target = Some((cx, cy));
                 break;
             }
-
+    
             for (dx, dy) in [(0isize, -1), (0, 1), (-1, 0), (1, 0)] {
                 let nx = cx as isize + dx;
                 let ny = cy as isize + dy;
-
+    
                 if nx >= 0 && ny >= 0 &&
                     (nx as usize) < map.width && (ny as usize) < map.height {
                     let ux = nx as usize;
@@ -285,12 +287,12 @@ impl Robot {
                 }
             }
         }
-
+    
         // Reconstitue le chemin et avance vers la case inconnue
         if let Some((tx, ty)) = target {
             let mut path = vec![(tx, ty)];
             let mut current = came_from[ty][tx];
-
+    
             while let Some((cx, cy)) = current {
                 if (cx, cy) == (self.x, self.y) {
                     break;
@@ -298,9 +300,9 @@ impl Robot {
                 path.push((cx, cy));
                 current = came_from[cy][cx];
             }
-
+    
             path.reverse();
-
+    
             if let Some(&(nx, ny)) = path.get(0) {
                 if nx > self.x {
                     self.direction = Direction::East;
@@ -315,11 +317,11 @@ impl Robot {
                 return;
             }
         }
-
+    
         // Fallback
         self.move_random(map);
     }
-
+    
     fn move_dijkstra_to(&mut self, map: &mut Map, target_x: usize, target_y: usize) {
         
         // If we already have a path, follow it
@@ -385,7 +387,7 @@ impl Robot {
                 }
             }
         }
-        
+
         // If we can't find a path, try to move in the general direction
         if self.current_path.is_empty() {
             println!("No path found, moving towards target");
@@ -431,6 +433,22 @@ impl Robot {
     }
 
     fn move_smart_towards_unknown_with_others(&mut self, map: &Map, other_explorers: &[(usize, usize)]) {
+        // If there are no other explorers or we're the only one, use regular exploration
+        if other_explorers.len() <= 1 {
+            self.move_smart_towards_unknown(map);
+            return;
+        }
+        
+        // Assign each explorer a preferred direction to encourage spreading
+        // Use the robot's memory address as a stable identifier for consistent behavior
+        let robot_id = self as *const _ as usize;
+        let preferred_direction = match robot_id % 4 {
+            0 => (1, 0),   // East
+            1 => (0, 1),   // South
+            2 => (-1, 0),  // West
+            _ => (0, -1),  // North
+        };
+        
         let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
         let mut visited = HashSet::new();
         let mut came_from = vec![vec![None; map.width]; map.height];
@@ -438,15 +456,15 @@ impl Robot {
         // Create a cost map where cells near other explorers have higher costs
         let mut cost_map = vec![vec![1usize; map.width]; map.height];
         
-        // Add higher costs to areas near other explorers to encourage spreading out
+        // Add MUCH higher costs to areas near other explorers to force spreading out
         for &(ex, ey) in other_explorers {
             // Skip if this is the current robot
             if ex == self.x && ey == self.y {
                 continue;
             }
             
-            // Define an influence radius (how far to avoid other explorers)
-            let influence_radius = 8;
+            // Define a larger influence radius
+            let influence_radius = 15;
             
             // Add higher costs in a radius around other explorers
             for y in ey.saturating_sub(influence_radius)..=(ey + influence_radius).min(map.height - 1) {
@@ -455,11 +473,36 @@ impl Robot {
                     let distance = (x as isize - ex as isize).abs() + (y as isize - ey as isize).abs();
                     
                     if distance < influence_radius as isize {
-                        // Inverse relationship: closer = higher cost
-                        let additional_cost = influence_radius as usize - distance as usize;
-                        cost_map[y][x] += additional_cost * 3; // Multiply by a factor to increase the effect
+                        // Inverse relationship: closer = MUCH higher cost
+                        let additional_cost = (influence_radius as usize - distance as usize) * 10;
+                        cost_map[y][x] += additional_cost; // Much stronger effect
                     }
                 }
+            }
+        }
+        
+        // Add direction preference - reduce cost in preferred direction
+        let center_x = map.width / 2;
+        let center_y = map.height / 2;
+        
+        for y in 0..map.height {
+            for x in 0..map.width {
+                // Calculate vector from center
+                let dx = (x as isize - center_x as isize) as f32;
+                let dy = (y as isize - center_y as isize) as f32;
+                
+                // Normalize
+                let len = (dx * dx + dy * dy).sqrt().max(1.0);
+                let norm_dx = dx / len;
+                let norm_dy = dy / len;
+                
+                // Calculate dot product with preferred direction
+                let dot_product = norm_dx * preferred_direction.0 as f32 + norm_dy * preferred_direction.1 as f32;
+                
+                // Adjust cost based on alignment with preferred direction
+                // Reduce cost if aligned with preferred direction
+                let direction_factor = (1.0 - dot_product) * 5.0; // Scale factor
+                cost_map[y][x] = cost_map[y][x].saturating_add(direction_factor as usize);
             }
         }
         
@@ -490,10 +533,8 @@ impl Robot {
                     best_cost = total_cost;
                 }
                 
-                // Don't break immediately; check all cells at the current BFS depth
-                if queue.is_empty() || queue.front().map(|&(x, y)| 
-                    !self.discovered.iter().any(|&((dx, dy), _)| dx == x && dy == y)
-                ).unwrap_or(false) {
+                // Continue searching but break after finding a reasonable number of candidates
+                if queue.len() > 50 {
                     break;
                 }
             }
@@ -519,33 +560,40 @@ impl Robot {
         if let Some((tx, ty)) = best_target {
             let mut path = vec![(tx, ty)];
             let mut current = came_from[ty][tx];
-            
-            while let Some((cx, cy)) = current {
-                if (cx, cy) == (self.x, self.y) {
-                    break;
-                }
-                path.push((cx, cy));
-                current = came_from[cy][cx];
+
+        while let Some((cx, cy)) = current {
+            if (cx, cy) == (self.x, self.y) {
+                break;
             }
-            
-            path.reverse();
-            
+            path.push((cx, cy));
+            current = came_from[cy][cx];
+        }
+
+        path.reverse();
+
             if let Some(&(nx, ny)) = path.get(0) {
                 if nx > self.x {
-                    self.direction = Direction::East;
+                self.direction = Direction::East;
                 } else if nx < self.x {
-                    self.direction = Direction::West;
+                self.direction = Direction::West;
                 } else if ny > self.y {
-                    self.direction = Direction::South;
+                self.direction = Direction::South;
                 } else if ny < self.y {
-                    self.direction = Direction::North;
+                self.direction = Direction::North;
                 }
                 self.move_forward(map);
                 return;
             }
         }
         
-        // Fallback to random movement if no path found
-        self.move_random(map);
+        // As a fallback, move in the preferred direction if possible
+        match preferred_direction {
+            (1, 0) => self.direction = Direction::East,
+            (-1, 0) => self.direction = Direction::West,
+            (0, 1) => self.direction = Direction::South,
+            (0, -1) => self.direction = Direction::North,
+            _ => {}
+        }
+        self.move_forward(map);
     }
 }

@@ -1,5 +1,5 @@
 use crate::map::{Map, Cell};
-use crate::robot::{Robot, RobotRole};
+use crate::robot::{Robot, RobotRole, Direction};
 use crate::station::Station;
 use bevy::prelude::*;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel, MouseMotion};
@@ -7,6 +7,7 @@ use bevy::input::ButtonInput;
 use bevy::ui::{BackgroundColor, PositionType, Val, UiRect, FlexDirection, AlignItems};
 use std::collections::HashSet;
 use crate::config::FOG_OF_WAR;
+use std::collections::HashMap;
 
 pub mod gui {
     use super::*;
@@ -38,6 +39,9 @@ pub mod gui {
     
     #[derive(Component)]
     pub struct RobotSprite(pub usize);
+    
+    #[derive(Component)]
+    pub struct DirectionIndicator(pub usize);
     
     #[derive(Component)]
     pub struct StationSprite;
@@ -441,14 +445,28 @@ pub mod gui {
         ));
         
         // Spawn robots
+        // Create a map to track how many robots are at each position
+        let mut robot_position_count: HashMap<(usize, usize), usize> = HashMap::new();
+        
         for (i, robot) in simulation.robots.iter().enumerate() {
+            // Count robots at each position
+            let position_count = robot_position_count.entry((robot.x, robot.y)).or_insert(0);
+            *position_count += 1;
+            
+            // Calculate offset based on how many robots are already at this position
+            let offset_angle = (*position_count as f32 - 1.0) * std::f32::consts::PI / 4.0;
+            let offset_distance = if *position_count > 1 { TILE_SIZE * 0.3 } else { 0.0 };
+            let offset_x = offset_distance * offset_angle.cos();
+            let offset_y = offset_distance * offset_angle.sin();
+            
             let robot_pos = Vec3::new(
-                robot.x as f32 * TILE_SIZE,
-                -(robot.y as f32 * TILE_SIZE),
+                robot.x as f32 * TILE_SIZE + offset_x,
+                -(robot.y as f32 * TILE_SIZE) + offset_y,
                 2.0,
             );
             
-            commands.spawn((
+            // Spawn the robot sprite
+            let robot_entity = commands.spawn((
                 Sprite {
                     color: match robot.role {
                         RobotRole::Explorer => Color::srgb(0.0, 1.0, 0.0),   // Green
@@ -461,7 +479,29 @@ pub mod gui {
                 Transform::from_translation(robot_pos),
                 Visibility::Visible,
                 RobotSprite(i),
-            ));
+            )).id();
+            
+            // Calculate direction indicator position
+            let indicator_offset = match robot.direction {
+                Direction::North => Vec3::new(0.0, TILE_SIZE * 0.3, 0.1),
+                Direction::South => Vec3::new(0.0, -TILE_SIZE * 0.3, 0.1),
+                Direction::East => Vec3::new(TILE_SIZE * 0.3, 0.0, 0.1),
+                Direction::West => Vec3::new(-TILE_SIZE * 0.3, 0.0, 0.1),
+            };
+            
+            // Spawn direction indicator as a child of the robot
+            commands.entity(robot_entity).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        color: Color::srgb(1.0, 1.0, 1.0), // White
+                        custom_size: Some(Vec2::splat(TILE_SIZE * 0.2)),
+                        ..default()
+                    },
+                    Transform::from_translation(indicator_offset),
+                    Visibility::Visible,
+                    DirectionIndicator(i),
+                ));
+            });
         }
     }
     
@@ -469,7 +509,10 @@ pub mod gui {
         time: Res<Time>,
         mut timer: ResMut<SimulationTickTimer>,
         mut sim: ResMut<SimulationData>,
-        mut query: Query<(&mut Transform, &RobotSprite)>,
+        mut param_set: ParamSet<(
+            Query<(&mut Transform, &RobotSprite)>,
+            Query<(&mut Transform, &DirectionIndicator)>
+        )>,
     ) {
         if timer.timer.tick(time.delta()).just_finished() {
             println!("⏱️ Tick!");
@@ -499,15 +542,60 @@ pub mod gui {
             sim.map = map_clone;
             sim.station = station_clone;
             
+            // Track how many robots are at each position
+            let mut robot_position_count: HashMap<(usize, usize), usize> = HashMap::new();
+            let mut robot_position_index: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+            
+            // First, count robots at each position and track their indices
+            for (i, robot) in sim.robots.iter().enumerate() {
+                *robot_position_count.entry((robot.x, robot.y)).or_insert(0) += 1;
+                robot_position_index.entry((robot.x, robot.y)).or_insert_with(Vec::new).push(i);
+            }
+            
             // Update robot positions in the UI
-            for (mut transform, robot_sprite) in &mut query {
-                let robot = &sim.robots[robot_sprite.0];
-                let new_pos = Vec3::new(
-                    robot.x as f32 * TILE_SIZE,
-                    -(robot.y as f32 * TILE_SIZE),
-                    2.0,
-                );
-                transform.translation = new_pos;
+            {
+                let mut robot_query = param_set.p0();
+                for (mut transform, robot_sprite) in robot_query.iter_mut() {
+                    let robot = &sim.robots[robot_sprite.0];
+                    let pos = (robot.x, robot.y);
+                    
+                    // Find this robot's index among robots at the same position
+                    let position_index = robot_position_index.get(&pos)
+                        .and_then(|indices| indices.iter().position(|&idx| idx == robot_sprite.0))
+                        .unwrap_or(0);
+                    
+                    // Calculate offset based on position and total robots at that position
+                    let total_at_position = robot_position_count.get(&pos).copied().unwrap_or(1);
+                    let offset_angle = (position_index as f32) * std::f32::consts::PI / 4.0;
+                    let offset_distance = if total_at_position > 1 { TILE_SIZE * 0.3 } else { 0.0 };
+                    let offset_x = offset_distance * offset_angle.cos();
+                    let offset_y = offset_distance * offset_angle.sin();
+                    
+                    let new_pos = Vec3::new(
+                        robot.x as f32 * TILE_SIZE + offset_x,
+                        -(robot.y as f32 * TILE_SIZE) + offset_y,
+                        2.0,
+                    );
+                    transform.translation = new_pos;
+                }
+            }
+            
+            // Update direction indicators
+            {
+                let mut indicator_query = param_set.p1();
+                for (mut transform, indicator) in indicator_query.iter_mut() {
+                    let robot = &sim.robots[indicator.0];
+                    
+                    // Update indicator position based on robot's current direction
+                    let indicator_offset = match robot.direction {
+                        Direction::North => Vec3::new(0.0, TILE_SIZE * 0.3, 0.1),
+                        Direction::South => Vec3::new(0.0, -TILE_SIZE * 0.3, 0.1),
+                        Direction::East => Vec3::new(TILE_SIZE * 0.3, 0.0, 0.1),
+                        Direction::West => Vec3::new(-TILE_SIZE * 0.3, 0.0, 0.1),
+                    };
+                    
+                    transform.translation = indicator_offset;
+                }
             }
         }
     }

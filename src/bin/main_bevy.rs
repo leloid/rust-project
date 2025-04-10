@@ -24,9 +24,9 @@ fn main() {
     let station = Station::new(station_x, station_y);
 
     let robots = vec![
-        Robot::new(station_x, station_y - 1, Direction::East, RobotRole::Explorer),
-        Robot::new(station_x, station_y - 2, Direction::South, RobotRole::Explorer),
-        Robot::new(station_x, station_y - 3, Direction::West, RobotRole::Explorer),
+        Robot::new(station_x, station_y -1 , Direction::East, RobotRole::Explorer),
+        Robot::new(station_x, station_y  - 2 , Direction::South, RobotRole::Explorer),
+        Robot::new(station_x, station_y  -3, Direction::West, RobotRole::Explorer),
 
         Robot::new(station_x - 2, station_y, Direction::East, RobotRole::Collector),
         Robot::new(station_x + 2, station_y, Direction::North, RobotRole::Scientist),
