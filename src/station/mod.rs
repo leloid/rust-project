@@ -7,9 +7,9 @@ pub struct Station {
     pub x: usize,
     pub y: usize,
     pub discovered: HashMap<(usize, usize), Cell>, // fusion des cartes
-    pub resources_collected: HashMap<Cell, u32>,   // resources collected by collectors
-    pub robots_created: u32,
-    pub scientific_discoveries: u32,
+    pub resources_collected: HashMap<Cell, usize>,   // resources collected by collectors
+    pub robots_created: usize,
+    pub scientific_discoveries: usize,
 }
 
 impl Station {

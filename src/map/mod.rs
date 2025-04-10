@@ -15,6 +15,7 @@ pub enum Cell {
 }
 
 
+#[derive(Debug, Clone)]
 pub struct Map {
     pub width: usize,
     pub height: usize,
