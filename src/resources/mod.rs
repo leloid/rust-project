@@ -89,23 +89,40 @@ pub mod gui {
             BackgroundColor(Color::srgb(0.1, 0.1, 0.1).with_alpha(0.7)),
             ResourceLegend,
         )).with_children(|parent| {
+            // Title: Resources
+            parent.spawn((
+                Node {
+                    margin: UiRect::bottom(Val::Px(10.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                parent.spawn((
+                    Text::new("Resources"),
+                ));
+            });
+
             // Energy
             parent.spawn((
                 Node {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
             )).with_children(|parent| {
+                // Colored square
                 parent.spawn((
-                    Sprite {
-                        color: Color::srgb(1.0, 0.8, 0.0),
-                        custom_size: Some(Vec2::splat(20.0)),
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    BackgroundColor(Color::srgb(1.0, 0.8, 0.0)), // Gold
                 ));
+                // Text label
                 parent.spawn((
                     Text::new("Energy"),
                 ));
@@ -117,17 +134,21 @@ pub mod gui {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
             )).with_children(|parent| {
+                // Colored square
                 parent.spawn((
-                    Sprite {
-                        color: Color::srgb(0.6, 0.3, 0.8),
-                        custom_size: Some(Vec2::splat(20.0)),
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    BackgroundColor(Color::srgb(0.6, 0.3, 0.8)), // Purple
                 ));
+                // Text label
                 parent.spawn((
                     Text::new("Mineral"),
                 ));
@@ -139,19 +160,36 @@ pub mod gui {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                // Colored square
+                parent.spawn((
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.0, 0.8, 1.0)), // Cyan
+                ));
+                // Text label
+                parent.spawn((
+                    Text::new("Science"),
+                ));
+            });
+
+            // Title: Entities
+            parent.spawn((
+                Node {
+                    margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(10.0), Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
             )).with_children(|parent| {
                 parent.spawn((
-                    Sprite {
-                        color: Color::srgb(0.0, 0.8, 1.0),
-                        custom_size: Some(Vec2::splat(20.0)),
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
-                ));
-                parent.spawn((
-                    Text::new("Science"),
+                    Text::new("Entities"),
                 ));
             });
 
@@ -161,41 +199,101 @@ pub mod gui {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
             )).with_children(|parent| {
+                // Colored square
                 parent.spawn((
-                    Sprite {
-                        color: Color::srgb(1.0, 0.0, 0.0),
-                        custom_size: Some(Vec2::splat(20.0)),
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    BackgroundColor(Color::srgb(1.0, 0.0, 0.0)), // Red
                 ));
+                // Text label
                 parent.spawn((
                     Text::new("Station"),
                 ));
             });
 
-            // Robots
+            // Robot - Explorer
             parent.spawn((
                 Node {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
                     ..default()
                 },
             )).with_children(|parent| {
+                // Colored square
                 parent.spawn((
-                    Sprite {
-                        color: Color::srgb(0.0, 1.0, 0.0),
-                        custom_size: Some(Vec2::splat(20.0)),
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
                         ..default()
                     },
-                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    BackgroundColor(Color::srgb(0.0, 1.0, 0.0)), // Green
                 ));
+                // Text label
                 parent.spawn((
-                    Text::new("Robot"),
+                    Text::new("Explorer Robot"),
+                ));
+            });
+
+            // Robot - Collector
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                // Colored square
+                parent.spawn((
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(1.0, 0.5, 0.0)), // Orange
+                ));
+                // Text label
+                parent.spawn((
+                    Text::new("Collector Robot"),
+                ));
+            });
+
+            // Robot - Scientist
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    margin: UiRect::bottom(Val::Px(5.0)),
+                    padding: UiRect::all(Val::Px(5.0)),
+                    ..default()
+                },
+            )).with_children(|parent| {
+                // Colored square
+                parent.spawn((
+                    Node {
+                        width: Val::Px(20.0),
+                        height: Val::Px(20.0),
+                        margin: UiRect::right(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.8, 0.0, 0.8)), // Purple
+                ));
+                // Text label
+                parent.spawn((
+                    Text::new("Scientist Robot"),
                 ));
             });
         });
