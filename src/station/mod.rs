@@ -56,17 +56,17 @@ impl Station {
         if energy >= 5 {
             *self.resources_collected.entry(Cell::Energy).or_insert(0) -= 5;
             self.robots_created += 1;
-            println!("🚀 Station a créé un nouveau robot Explorateur !");
+            println!("Station created a new Explorer robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Explorer))
         } else if mineral >= 5 {
             *self.resources_collected.entry(Cell::Mineral).or_insert(0) -= 5;
             self.robots_created += 1;
-            println!("🚀 Station a créé un nouveau robot Collecteur !");
+            println!("Station created a new Collector robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Collector))
         } else if science >= 5 {
             *self.resources_collected.entry(Cell::Science).or_insert(0) -= 5;
             self.robots_created += 1;
-            println!("🚀 Station a créé un nouveau robot Scientifique !");
+            println!("Station created a new Scientist robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Scientist))
         } else {
             None

@@ -119,13 +119,13 @@ impl Robot {
                 if (current_cell == Cell::Mineral || current_cell == Cell::Energy) && self.collected.len() < 2 {
                     self.collected.push(current_cell);
                     map.grid[self.y][self.x] = Cell::Empty;
-                    println!("🤖 Collector collected a resource! Total collected: {}", self.collected.len());
+                    println!("Collector collected a resource! Total collected: {}", self.collected.len());
                 }
 
                 // If we have 2 resources, return to station
                 if self.collected.len() >= 2 {
                     if self.x == station_x && self.y == station_y {
-                        println!("🤖 Collector depositing {} resources at station", self.collected.len());
+                        println!("Collector depositing {} resources at station", self.collected.len());
                         station.receive_resources(self.collected.drain(..).collect());
                     } else {
                         self.move_dijkstra_to(map, station_x, station_y);
@@ -146,13 +146,13 @@ impl Robot {
                 if current_cell == Cell::Science && self.collected.len() < 1 {
                     self.collected.push(current_cell);
                     map.grid[self.y][self.x] = Cell::Empty;
-                    println!("🤖 Scientist collected a science resource! Total collected: {}", self.collected.len());
+                    println!("Scientist collected a science resource! Total collected: {}", self.collected.len());
                 }
 
                 // If we have a science resource, return to station
                 if self.collected.len() >= 1 {
                     if self.x == station_x && self.y == station_y {
-                        println!("🤖 Scientist depositing {} science resources at station", self.collected.len());
+                        println!("Scientist depositing {} science resources at station", self.collected.len());
                         station.receive_resources(self.collected.drain(..).collect());
                     } else {
                         self.move_dijkstra_to(map, station_x, station_y);

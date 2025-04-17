@@ -724,7 +724,7 @@ pub mod gui {
             tick_counter.count += 1;
             
             // Show tick count in console
-            println!("⏱️ Tick! #{}", tick_counter.count);
+            println!("Tick: {}", tick_counter.count);
             
             // Create local copies of the values we need
             let station_x = sim.station_x;
