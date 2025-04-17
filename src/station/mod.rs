@@ -49,11 +49,25 @@ impl Station {
 
     pub fn maybe_create_robot(&mut self) -> Option<Robot> {
         let energy = self.resources_collected.get(&Cell::Energy).copied().unwrap_or(0);
+        let mineral = self.resources_collected.get(&Cell::Mineral).copied().unwrap_or(0);
+        let science = self.resources_collected.get(&Cell::Science).copied().unwrap_or(0);
+
+        // Check for each robot type in order of priority
         if energy >= 5 {
             *self.resources_collected.entry(Cell::Energy).or_insert(0) -= 5;
             self.robots_created += 1;
-            println!("🚀 Station a créé un nouveau robot !");
+            println!("🚀 Station a créé un nouveau robot Explorateur !");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Explorer))
+        } else if mineral >= 5 {
+            *self.resources_collected.entry(Cell::Mineral).or_insert(0) -= 5;
+            self.robots_created += 1;
+            println!("🚀 Station a créé un nouveau robot Collecteur !");
+            Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Collector))
+        } else if science >= 5 {
+            *self.resources_collected.entry(Cell::Science).or_insert(0) -= 5;
+            self.robots_created += 1;
+            println!("🚀 Station a créé un nouveau robot Scientifique !");
+            Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Scientist))
         } else {
             None
         }

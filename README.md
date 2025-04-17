@@ -78,10 +78,10 @@ Ce projet est sous licence [MIT](LICENSE).
 
 TODO :  
 
-Rajoute la creation de robot 
-    - Si 5 energy crée un robot explorer 
-    - Si 5 mineral créer un robot collectot 
-    - Si 5 Scientique créer un robot scientist 
+   Rajoute la creation de robot 
+      - Si 5 energy crée un robot explorer 
+      - Si 5 mineral créer un robot collectot 
+      - Si 5 Scientique créer un robot scientist 
 
 Rajouter les collisions 
 

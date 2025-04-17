@@ -708,6 +708,7 @@ pub mod gui {
         mut sim: ResMut<SimulationData>,
         mut tick_counter: ResMut<TickCounter>,
         paused: Res<SimulationPaused>,
+        mut commands: Commands,
         mut param_set: ParamSet<(
             Query<(&mut Transform, &RobotSprite)>,
             Query<(&mut Transform, &DirectionIndicator)>
@@ -744,6 +745,61 @@ pub mod gui {
             for robot in &mut sim.robots {
                 // Update the robot with the cloned data
                 robot.act(&mut map_clone, station_x, station_y, &mut station_clone);
+            }
+
+            // Try to create a new robot if we have enough resources
+            if let Some(new_robot) = station_clone.maybe_create_robot() {
+                let robot_index = sim.robots.len();
+                let robot_role = new_robot.role;
+                let robot_direction = new_robot.direction;
+                let robot_x = new_robot.x;
+                let robot_y = new_robot.y;
+                sim.robots.push(new_robot);
+
+                // Spawn the new robot sprite
+                let robot_pos = Vec3::new(
+                    robot_x as f32 * TILE_SIZE,
+                    -(robot_y as f32 * TILE_SIZE),
+                    2.0,
+                );
+
+                // Spawn the robot sprite
+                let robot_entity = commands.spawn((
+                    Sprite {
+                        color: match robot_role {
+                            RobotRole::Explorer => Color::srgb(0.0, 1.0, 0.0),   // Green
+                            RobotRole::Collector => Color::srgb(1.0, 0.5, 0.0),  // Orange
+                            RobotRole::Scientist => Color::srgb(0.8, 0.0, 0.8),  // Purple
+                        },
+                        custom_size: Some(Vec2::splat(TILE_SIZE * 0.8)),
+                        ..default()
+                    },
+                    Transform::from_translation(robot_pos),
+                    Visibility::Visible,
+                    RobotSprite(robot_index),
+                )).id();
+
+                // Calculate direction indicator position
+                let indicator_offset = match robot_direction {
+                    Direction::North => Vec3::new(0.0, TILE_SIZE * 0.3, 0.1),
+                    Direction::South => Vec3::new(0.0, -TILE_SIZE * 0.3, 0.1),
+                    Direction::East => Vec3::new(TILE_SIZE * 0.3, 0.0, 0.1),
+                    Direction::West => Vec3::new(-TILE_SIZE * 0.3, 0.0, 0.1),
+                };
+
+                // Spawn direction indicator as a child of the robot
+                commands.entity(robot_entity).with_children(|parent| {
+                    parent.spawn((
+                        Sprite {
+                            color: Color::srgb(1.0, 1.0, 1.0), // White
+                            custom_size: Some(Vec2::splat(TILE_SIZE * 0.2)),
+                            ..default()
+                        },
+                        Transform::from_translation(indicator_offset),
+                        Visibility::Visible,
+                        DirectionIndicator(robot_index),
+                    ));
+                });
             }
             
             // Update the main simulation with changes
