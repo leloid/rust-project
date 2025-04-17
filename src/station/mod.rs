@@ -1,5 +1,6 @@
 use crate::map::Cell;
 use crate::robot::{Robot, RobotRole, Direction};
+use crate::config::{EXPLORER_COST, COLLECTOR_COST, SCIENTIST_COST};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -53,18 +54,18 @@ impl Station {
         let science = self.resources_collected.get(&Cell::Science).copied().unwrap_or(0);
 
         // Check for each robot type in order of priority
-        if energy >= 5 {
-            *self.resources_collected.entry(Cell::Energy).or_insert(0) -= 5;
+        if energy >= EXPLORER_COST {
+            *self.resources_collected.entry(Cell::Energy).or_insert(0) -= EXPLORER_COST;
             self.robots_created += 1;
             println!("Station created a new Explorer robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Explorer))
-        } else if mineral >= 5 {
-            *self.resources_collected.entry(Cell::Mineral).or_insert(0) -= 5;
+        } else if mineral >= COLLECTOR_COST {
+            *self.resources_collected.entry(Cell::Mineral).or_insert(0) -= COLLECTOR_COST;
             self.robots_created += 1;
             println!("Station created a new Collector robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Collector))
-        } else if science >= 5 {
-            *self.resources_collected.entry(Cell::Science).or_insert(0) -= 5;
+        } else if science >= SCIENTIST_COST {
+            *self.resources_collected.entry(Cell::Science).or_insert(0) -= SCIENTIST_COST;
             self.robots_created += 1;
             println!("Station created a new Scientist robot!");
             Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Scientist))
