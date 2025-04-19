@@ -5,6 +5,10 @@
 
 ![Banner](https://raw.githubusercontent.com/username/ProjetEssaim/main/docs/banner.png)
 
+## Changelog
+
+Pour suivre l'évolution du projet et les changements apportés, consultez le [CHANGELOG](docs/CHANGELOG.md).
+
 ## Démonstration
 
 [Vidéo de démonstration](docs/video.mp4)
