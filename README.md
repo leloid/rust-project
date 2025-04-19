@@ -53,6 +53,11 @@ La simulation utilise le moteur graphique Bevy pour offrir une visualisation int
    cargo run --bin main
    ```
 
+3. Ou run les test
+   ```bash
+   cargo test
+   ```
+
 ## Configuration
 
 Vous pouvez modifier les paramètres de la simulation dans `src/config/mod.rs`:
@@ -74,21 +79,3 @@ Vous pouvez modifier les paramètres de la simulation dans `src/config/mod.rs`:
 
 Ce projet est sous licence [MIT](LICENSE).
 
-
-
-TODO :  
-
-   Rajoute la creation de robot 
-      - Si 5 energy crée un robot explorer 
-      - Si 5 mineral créer un robot collectot 
-      - Si 5 Scientique créer un robot scientist 
-
-Rajouter les collisions 
-
-Ameliorer le graphisme
-
-Faires les fichiers tests 
-
-Ameliorer la structure du projet, faire des sous fichier decomposer le code 
-
-Retierer les logos/emoticones 
