@@ -2,6 +2,14 @@ use crate::map::{Map, Cell};
 use rand::Rng;
 use std::collections::{HashSet, VecDeque};
 
+mod explorer;
+mod collector;
+mod scientist;
+
+pub use explorer::*;
+pub use collector::*;
+pub use scientist::*;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Direction {
     North,
@@ -14,7 +22,7 @@ pub enum Direction {
 pub enum RobotRole {
     Explorer,
     Collector,
-    Scientist,  // New role for Scientist robot
+    Scientist,
 }
 
 #[derive(Debug, Clone)]
@@ -24,10 +32,10 @@ pub struct Robot {
     pub direction: Direction,
     pub role: RobotRole,
     pub discovered: Vec<((usize, usize), Cell)>,
-    pub collected: Vec<Cell>,  // Resources collected by the collector
-    pub target_resource: Option<Cell>,  // Current target resource type
-    pub current_path: Vec<(usize, usize)>,  // Current path to follow
-    pub preferred_direction: Option<(isize, isize)>, // Preferred exploration direction
+    pub collected: Vec<Cell>,
+    pub target_resource: Option<Cell>,
+    pub current_path: Vec<(usize, usize)>,
+    pub preferred_direction: Option<(isize, isize)>,
 }
 
 impl Robot {
@@ -38,11 +46,11 @@ impl Robot {
             direction,
             role,
             discovered: Vec::new(),
-            collected: Vec::new(), 
+            collected: Vec::new(),
             target_resource: None,
             current_path: Vec::new(),
             preferred_direction: None,
-        }        
+        }
     }
 
     pub fn turn_left(&mut self) {
@@ -87,88 +95,24 @@ impl Robot {
         for y in min_y..=max_y {
             for x in min_x..=max_x {
                 let cell = map.grid[y][x];
-                // Update the robot's discovered list
                 if !self.discovered.iter().any(|&((dx, dy), _)| dx == x && dy == y) {
-                self.discovered.push(((x, y), cell));
+                    self.discovered.push(((x, y), cell));
                 }
-                // Update the station's discovered map
                 station.discovered.entry((x, y)).or_insert(cell);
             }
         }
     }
 
     pub fn act(&mut self, map: &mut Map, station_x: usize, station_y: usize, station: &mut crate::station::Station) {
-        // Update vision for all robots
         self.vision(map, 2, station);
-        
+
         match self.role {
-            RobotRole::Explorer => {
-                // Check if we're at the station to deposit discoveries
-                if self.x == station_x && self.y == station_y {
-                    // We're at the station, we've already shared discoveries in vision()
-                    // Now move away from station
-                    self.move_smart_towards_unknown_with_others(map, station.get_explorer_positions());
-                } else {
-                    // Normal exploration - use the new spreading algorithm
-                    self.move_smart_towards_unknown_with_others(map, station.get_explorer_positions());
-                }
-            }
-            RobotRole::Collector => {
-                // Check if we're on a resource and collect it
-                let current_cell = map.grid[self.y][self.x];
-                if (current_cell == Cell::Mineral || current_cell == Cell::Energy) && self.collected.len() < 2 {
-                    self.collected.push(current_cell);
-                    map.grid[self.y][self.x] = Cell::Empty;
-                    println!("Collector collected a resource! Total collected: {}", self.collected.len());
-                }
-
-                // If we have 2 resources, return to station
-                if self.collected.len() >= 2 {
-                    if self.x == station_x && self.y == station_y {
-                        println!("Collector depositing {} resources at station", self.collected.len());
-                        station.receive_resources(self.collected.drain(..).collect());
-                    } else {
-                        self.move_dijkstra_to(map, station_x, station_y);
-                    }
-                } else {
-                    // Look for nearest resource
-                    if let Some((target_x, target_y)) = self.find_nearest_resource_position(map) {
-                        self.move_dijkstra_to(map, target_x, target_y);
-                    } else {
-                        // If no resources found, explore
-                        self.move_smart_towards_unknown(map);
-                    }
-                }            
-            }
-            RobotRole::Scientist => {
-                // Check if we're on a Science resource and collect it
-                let current_cell = map.grid[self.y][self.x];
-                if current_cell == Cell::Science && self.collected.len() < 1 {
-                    self.collected.push(current_cell);
-                    map.grid[self.y][self.x] = Cell::Empty;
-                    println!("Scientist collected a science resource! Total collected: {}", self.collected.len());
-                }
-
-                // If we have a science resource, return to station
-                if self.collected.len() >= 1 {
-                    if self.x == station_x && self.y == station_y {
-                        println!("Scientist depositing {} science resources at station", self.collected.len());
-                        station.receive_resources(self.collected.drain(..).collect());
-                    } else {
-                        self.move_dijkstra_to(map, station_x, station_y);
-                    }
-                } else {
-                    // Look for nearest science resource
-                    if let Some((target_x, target_y)) = self.find_nearest_scientist_position(map) {
-                        self.move_dijkstra_to(map, target_x, target_y);
-                    } else {
-                        // If no science resources found, move randomly
-                    self.move_random(map);
-                    }
-                }
-            }
+            RobotRole::Explorer => self.act_as_explorer(map, station_x, station_y, station),
+            RobotRole::Collector => self.act_as_collector(map, station_x, station_y, station),
+            RobotRole::Scientist => self.act_as_scientist(map, station_x, station_y, station),
         }
     }
+
 
     fn find_nearest_resource_position(&self, map: &Map) -> Option<(usize, usize)> {
         let mut queue = VecDeque::new();
@@ -180,39 +124,6 @@ impl Robot {
             let cell = map.grid[y][x];
             if cell == Cell::Mineral || cell == Cell::Energy {
                 return Some((x, y));
-            }
-
-            // Add neighbors to queue
-            for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
-                let nx = x as isize + dx;
-                let ny = y as isize + dy;
-                if nx >= 0 && ny >= 0 && nx < map.width as isize && ny < map.height as isize {
-                    let pos = (nx as usize, ny as usize);
-                    if !visited.contains(&pos) && map.grid[pos.1][pos.0] != Cell::Obstacle {
-                        queue.push_back(pos);
-                        visited.insert(pos);
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn find_nearest_resource(&self, map: &Map, station: &mut crate::station::Station) -> Option<Cell> {
-        let mut queue = VecDeque::new();
-        let mut visited = HashSet::new();
-        queue.push_back((self.x, self.y));
-        visited.insert((self.x, self.y));
-
-        while let Some((x, y)) = queue.pop_front() {
-            let cell = map.grid[y][x];
-            if cell == Cell::Mineral || cell == Cell::Energy {
-                // Check if this resource is already being targeted by another collector
-                if !station.discovered.contains_key(&(x, y)) {
-                    // Mark this resource as targeted
-                    station.discovered.insert((x, y), cell);
-                    return Some(cell);
-                }
             }
 
             // Add neighbors to queue

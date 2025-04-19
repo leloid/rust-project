@@ -1,17 +1,10 @@
+pub mod cell;
+pub use cell::Cell;
 use noise::{NoiseFn, Perlin};
 use rand::{SeedableRng, rngs::StdRng, Rng};
 use crate::robot::Robot;
 use crate::station::Station;
 use std::collections::HashSet;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Cell {
-    Empty,
-    Obstacle,
-    Energy,
-    Mineral,
-    Science,
-}
 
 
 #[derive(Debug, Clone)]
@@ -38,13 +31,11 @@ impl Map {
 
         let mut rng = StdRng::seed_from_u64(seed);
 
-        // Calculate resource counts based on map size
         let map_area = width * height;
-        let energy_count = (map_area as f32 * 0.05) as usize; // 5% of map area
-        let mineral_count = (map_area as f32 * 0.05) as usize; // 5% of map area
-        let science_count = (map_area as f32 * 0.03) as usize; // 3% of map area
+        let energy_count = (map_area as f32 * 0.05) as usize;
+        let mineral_count = (map_area as f32 * 0.05) as usize;
+        let science_count = (map_area as f32 * 0.03) as usize;
 
-        // Place resources
         Map::place_random(&mut grid, Cell::Energy, energy_count, &mut rng);
         Map::place_random(&mut grid, Cell::Mineral, mineral_count, &mut rng);
         Map::place_random(&mut grid, Cell::Science, science_count, &mut rng);
@@ -53,9 +44,7 @@ impl Map {
     }
 
     pub fn place_station(&mut self, x: usize, y: usize) {
-        // Ensure the position is within bounds
         if x < self.width && y < self.height {
-            // Clear the station's position
             self.grid[y][x] = Cell::Empty;
         }
     }
@@ -79,14 +68,7 @@ impl Map {
     pub fn display(&self) {
         for row in &self.grid {
             for cell in row {
-                let symbol = match cell {
-                    Cell::Empty => " E ",
-                    Cell::Obstacle => " O ",
-                    Cell::Energy => " P ",
-                    Cell::Mineral => " M ",
-                    Cell::Science => " S ",
-                };
-                print!("{}", symbol);
+                print!("{}", cell.to_symbol());
             }
             println!();
         }
@@ -98,14 +80,7 @@ impl Map {
                 if robot.x == x && robot.y == y {
                     print!(" R ");
                 } else {
-                    let symbol = match self.grid[y][x] {
-                        Cell::Empty => " E ",
-                        Cell::Obstacle => " O ",
-                        Cell::Energy => " P ",
-                        Cell::Mineral => " M ",
-                        Cell::Science => " S ",
-                    };
-                    print!("{}", symbol);
+                    print!("{}", self.grid[y][x].to_symbol());
                 }
             }
             println!();
@@ -115,22 +90,14 @@ impl Map {
     pub fn display_with_entities(&self, robots: &[Robot], station_x: usize, station_y: usize) {
         for y in 0..self.height {
             for x in 0..self.width {
-                // Détermine le symbole à afficher selon priorité
                 let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
-                    "\x1b[31m R \x1b[0m " 
+                    "\x1b[31m R \x1b[0m "
                 } else if x == station_x && y == station_y {
-                    "\x1b[34m H \x1b[0m " 
+                    "\x1b[34m H \x1b[0m "
                 } else {
-                    match self.grid[y][x] {
-                        Cell::Empty => " E ",
-                        Cell::Obstacle => "\x1b[90m O \x1b[0m ",
-                        Cell::Energy => "\x1b[33m P \x1b[0m ",    
-                        Cell::Mineral => "\x1b[35m M \x1b[0m ",   
-                        Cell::Science => "\x1b[36m S \x1b[0m ",   
-                    }
+                    self.grid[y][x].to_colored_symbol()
                 };
-    
-                // Affiche le symbole en largeur fixe (4 espaces pour l'alignement parfait)
+
                 print!("{:<4}", symbol);
             }
             println!();
@@ -139,42 +106,30 @@ impl Map {
 
     pub fn display_with_fog(&self, robots: &[Robot], station_x: usize, station_y: usize, station: &Station) {
         let mut visible_cells = HashSet::new();
-        
-        // Add station's initial vision
-        visible_cells.insert((station_x, station_y));
 
-        // Add robots' initial positions
+        visible_cells.insert((station_x, station_y));
         for robot in robots {
             visible_cells.insert((robot.x, robot.y));
         }
-
-        // Add discovered cells from the station
         for (&(x, y), _) in &station.discovered {
             visible_cells.insert((x, y));
         }
-    
+
         for y in 0..self.height {
             for x in 0..self.width {
                 let symbol = if robots.iter().any(|r| r.x == x && r.y == y) {
-                    "\x1b[31m R \x1b[0m " // Robot
+                    "\x1b[31m R \x1b[0m "
                 } else if x == station_x && y == station_y {
-                    "\x1b[34m H \x1b[0m " // Station
+                    "\x1b[34m H \x1b[0m "
                 } else if visible_cells.contains(&(x, y)) {
-                    match self.grid[y][x] {
-                        Cell::Empty => " E ",
-                        Cell::Obstacle => "\x1b[90m O \x1b[0m ",
-                        Cell::Energy => "\x1b[33m P \x1b[0m ",
-                        Cell::Mineral => "\x1b[35m M \x1b[0m ",
-                        Cell::Science => "\x1b[36m S \x1b[0m ",
-                    }
+                    self.grid[y][x].to_colored_symbol()
                 } else {
-                    " ? " // Zone non explorée
+                    " ? "
                 };
-                
+
                 print!("{:<4}", symbol);
             }
             println!();
         }
     }
-    
 }
