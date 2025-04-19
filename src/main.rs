@@ -29,7 +29,7 @@ fn main() {
         Robot::new(1, 1, Direction::East, RobotRole::Collector),
     ];
 
-    println!("🎮 Carte initiale avec brouillard de guerre");
+    println!("Carte initiale avec brouillard de guerre");
     // map.display_with_entities(&robots, station_x, station_y);
     // map.display_with_entities(&robots, station_x, station_y);
     map.display_with_fog(&robots, station_x, station_y,&station);
@@ -37,24 +37,23 @@ fn main() {
     // Simulation de plusieurs ticks
     for tick in 1..=50 {
         println!("=====================");
-        println!("\n🚀 Tick {} : exploration en cours !", tick);
+        println!("\nTick {} : exploration en cours !", tick);
 
         for (i, robot) in robots.iter_mut().enumerate() {
-            println!("🤖 Robot #{} ({:?}) en position ({}, {})", i, robot.role, robot.x, robot.y);
+            println!("Robot #{} ({:?}) en position ({}, {})", i, robot.role, robot.x, robot.y);
             if robot.role == RobotRole::Collector {
-                println!("   📦 Ressources collectées : {:?}", robot.collected);
+                println!("   Ressources collectées : {:?}", robot.collected);
                 if let Some(target) = robot.target_resource {
-                    println!("   🎯 Cible actuelle : {:?}", target);
+                    println!("   Cible actuelle : {:?}", target);
                 }
             }
             robot.act(&mut map, station_x, station_y, &mut station);
         }
 
         // Affichage de la carte après chaque tick
-        println!("\n🗺️ Carte après Tick {} :", tick);
-        // map.display_with_fog(&robots, station_x, station_y);
+        println!("\nCarte après Tick {} :", tick);
         map.display_with_fog(&robots, station_x, station_y,&station);
-        // map.display_with_entities(&robots, station_x, station_y);
+        
         // Afficher les ressources restantes
         let mut minerals = 0;
         let mut energy = 0;
@@ -67,25 +66,23 @@ fn main() {
                 }
             }
         }
-        println!("   💎 Minéraux restants : {}", minerals);
-        println!("   ⚡ Énergie restante : {}", energy);
+        println!("   Minéraux restants : {}", minerals);
+        println!("   Énergie restante : {}", energy);
     }
 
-
-
-    // ✅ Affichage des infos finales station + robots
-    println!("\n📡 Exploration terminée !");
+    // Affichage des infos finales station + robots
+    println!("\nExploration terminée !");
     for (i, robot) in robots.iter().enumerate() {
-        println!("📊 Robot #{} ({:?})", i, robot.role);
-        println!("   📍 Position finale : ({}, {})", robot.x, robot.y);
+        println!("Robot #{} ({:?})", i, robot.role);
+        println!("   Position finale : ({}, {})", robot.x, robot.y);
         if robot.role == RobotRole::Collector {
-            println!("   📦 Ressources collectées : {:?}", robot.collected);
+            println!("   Ressources collectées : {:?}", robot.collected);
         }
     }
 
-    // 📦 Infos fusionnées à la station
-    println!("\n🏠 Station - Données fusionnées :");
-    println!("   🔍 Zones explorées (total unique) : {}", station.discovered.len());
-    println!("   💎 Ressources collectées : {:?}", station.resources_collected);
-    println!("   🤖 Robots créés au total : {}", station.robots_created);
+    // Infos fusionnées à la station
+    println!("\nStation - Données fusionnées :");
+    println!("   Zones explorées (total unique) : {}", station.discovered.len());
+    println!("   Ressources collectées : {:?}", station.resources_collected);
+    println!("   Robots créés au total : {}", station.robots_created);
 }
