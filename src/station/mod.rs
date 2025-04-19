@@ -1,3 +1,5 @@
+pub mod logic;
+
 use crate::map::Cell;
 use crate::robot::{Robot, RobotRole, Direction};
 use crate::config::{EXPLORER_COST, COLLECTOR_COST, SCIENTIST_COST};
@@ -7,11 +9,11 @@ use std::collections::HashMap;
 pub struct Station {
     pub x: usize,
     pub y: usize,
-    pub discovered: HashMap<(usize, usize), Cell>, // fusion des cartes
-    pub resources_collected: HashMap<Cell, usize>,   // resources collected by collectors
+    pub discovered: HashMap<(usize, usize), Cell>,
+    pub resources_collected: HashMap<Cell, usize>,
     pub robots_created: usize,
     pub scientific_discoveries: usize,
-    pub explorer_positions: Vec<(usize, usize)>,   // Keep track of explorer positions
+    pub explorer_positions: Vec<(usize, usize)>,
 }
 
 impl Station {
@@ -27,7 +29,6 @@ impl Station {
         }
     }
 
-    // Update explorer positions
     pub fn update_explorer_positions(&mut self, explorers: &[&Robot]) {
         self.explorer_positions.clear();
         for explorer in explorers {
@@ -37,7 +38,6 @@ impl Station {
         }
     }
 
-    // Get explorer positions
     pub fn get_explorer_positions(&self) -> &[(usize, usize)] {
         &self.explorer_positions
     }
@@ -49,28 +49,14 @@ impl Station {
     }
 
     pub fn maybe_create_robot(&mut self) -> Option<Robot> {
-        let energy = self.resources_collected.get(&Cell::Energy).copied().unwrap_or(0);
-        let mineral = self.resources_collected.get(&Cell::Mineral).copied().unwrap_or(0);
-        let science = self.resources_collected.get(&Cell::Science).copied().unwrap_or(0);
+        use logic::can_create_robot;
 
-        // Check for each robot type in order of priority
-        if energy >= EXPLORER_COST {
-            *self.resources_collected.entry(Cell::Energy).or_insert(0) -= EXPLORER_COST;
+        if let Some(role) = can_create_robot(&mut self.resources_collected) {
             self.robots_created += 1;
-            println!("Station created a new Explorer robot!");
-            Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Explorer))
-        } else if mineral >= COLLECTOR_COST {
-            *self.resources_collected.entry(Cell::Mineral).or_insert(0) -= COLLECTOR_COST;
-            self.robots_created += 1;
-            println!("Station created a new Collector robot!");
-            Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Collector))
-        } else if science >= SCIENTIST_COST {
-            *self.resources_collected.entry(Cell::Science).or_insert(0) -= SCIENTIST_COST;
-            self.robots_created += 1;
-            println!("Station created a new Scientist robot!");
-            Some(Robot::new(self.x, self.y, Direction::North, RobotRole::Scientist))
-        } else {
-            None
+            println!("Station created a new {:?} robot!", role);
+            return Some(Robot::new(self.x, self.y, Direction::North, role));
         }
+
+        None
     }
 }
